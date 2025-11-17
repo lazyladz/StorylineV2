@@ -1,9 +1,9 @@
 FROM webdevops/php-nginx:8.2
 
-# Set the correct working directory that matches Nginx config
 WORKDIR /app
 
 COPY . .
+COPY nginx.conf /opt/docker/etc/nginx/vhost.common.d/
 
 RUN composer install --no-dev --optimize-autoloader
 RUN php artisan config:cache
