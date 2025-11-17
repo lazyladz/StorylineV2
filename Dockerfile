@@ -10,31 +10,30 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     zip \
     unzip \
-    && docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
+    git \
+    curl \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
 
 WORKDIR /var/www/html
 
+# Copy application files
 COPY . .
 
-# Configure supervisord
-RUN echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'nodaemon=true' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'user=root' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo '' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo '[program:php-fpm]' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'command=php-fpm -F' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo '' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo '[program:nginx]' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'command=nginx -g "daemon off;"' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
-RUN echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
+# Create necessary Laravel directories
+RUN mkdir -p \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/logs \
+    bootstrap/cache
 
-# Nginx config (same as above)
+# Configure supervisord
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Nginx config for Render (PORT 8080)
 RUN cat > /etc/nginx/sites-available/default << 'EOF'
 server {
-    listen 80;
+    listen 8080;
     server_name _;
     root /var/www/html/public;
     index index.php index.html;
@@ -48,17 +47,31 @@ server {
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+
+    location ~ /\.ht {
+        deny all;
     }
 }
 EOF
 
+# Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Install PHP dependencies and optimize
 RUN composer install --no-dev --optimize-autoloader
 
-RUN chown -R www-data:www-data /var/www/html
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Fix permissions (CRITICAL for Render)
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage \
+    && chmod -R 775 bootstrap/cache
 
-EXPOSE 80
+# Optimize Laravel for production
+RUN php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+EXPOSE 8080
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

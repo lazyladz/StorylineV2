@@ -108,10 +108,6 @@
   <div class="dashboard-content" style="padding-top: 20px;">
     <div class="container-fluid">
 
-    <div class="alert alert-info">
-    Debug: Laravel User ID: {{ auth()->id() }} | Supabase User ID: {{ auth()->user()->supabase_id }} | User Stories Count: {{ count($userStories) }}
-</div>
-
       <h4 class="section-title"><i class="fas fa-bookmark"></i>My Stories</h4>
       <div class="row g-3" id="myStories">
         @if (!empty($userStories))
