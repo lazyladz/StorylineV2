@@ -9,6 +9,33 @@ use App\Http\Controllers\StoryViewController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\BrowseController; // ADD THIS IMPORT
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+
+Route::get('/debug', function () {
+    try {
+        $dbConnected = DB::connection()->getPdo() ? true : false;
+    } catch (Exception $e) {
+        $dbConnected = false;
+        $dbError = $e->getMessage();
+    }
+
+    return response()->json([
+        'status' => 'OK',
+        'php_version' => PHP_VERSION,
+        'laravel_version' => app()->version(),
+        'environment' => app()->environment(),
+        'debug_mode' => config('app.debug'),
+        'database_connected' => $dbConnected,
+        'database_error' => $dbError ?? null,
+        'storage_writable' => is_writable(storage_path()),
+        'bootstrap_writable' => is_writable(base_path('bootstrap/cache')),
+        'extensions_loaded' => get_loaded_extensions(),
+    ]);
+});
+
+Route::get('/test', function () {
+    return response()->json(['message' => 'Basic route works!']);
+});
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
