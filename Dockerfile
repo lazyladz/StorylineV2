@@ -1,8 +1,7 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    nginx \
     git \
     libpng-dev \
     libonig-dev \
@@ -25,27 +24,6 @@ RUN mkdir -p \
     storage/logs \
     bootstrap/cache
 
-# Simple nginx config for Render
-RUN echo 'events {} \
-http { \
-    server { \
-        listen 8080; \
-        root /var/www/html/public; \
-        index index.php index.html; \
-        \
-        location / { \
-            try_files $uri $uri/ /index.php?$query_string; \
-        } \
-        \
-        location ~ \.php$ { \
-            fastcgi_pass 127.0.0.1:9000; \
-            fastcgi_index index.php; \
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
-            include fastcgi_params; \
-        } \
-    } \
-}' > /etc/nginx/nginx.conf
-
 # Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -57,10 +35,10 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage \
     && chmod -R 775 bootstrap/cache
 
-# Create a simple health check file
+# Create health check
 RUN echo "<?php echo 'OK'; ?>" > /var/www/html/public/health.php
 
 EXPOSE 8080
 
-# Render-optimized start command - SINGLE PROCESS
-CMD nginx -g 'daemon off;'
+# Use PHP built-in server (more stable on Render)
+CMD php -S 0.0.0.0:8080 -t public
