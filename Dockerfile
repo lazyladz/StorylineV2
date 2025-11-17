@@ -1,22 +1,31 @@
 FROM php:8.2-fpm
 
-# Install nginx and git
-RUN apt-get update && apt-get install -y nginx git
+# Install system dependencies INCLUDING ZIP TOOLS
+RUN apt-get update && apt-get install -y \
+    nginx \
+    git \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
 
 WORKDIR /var/www/html
 
 # Copy application
 COPY . .
 
-# Debug: Show what files we have
-RUN echo "=== Debug: File Structure ===" && \
-    ls -la /var/www/html/ && \
-    echo "=== Public Directory ===" && \
-    ls -la /var/www/html/public/ && \
-    echo "=== Checking index.php ===" && \
-    if [ -f /var/www/html/public/index.php ]; then echo "✓ index.php exists"; else echo "✗ index.php MISSING"; fi
+# Create Laravel directories
+RUN mkdir -p \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/logs \
+    bootstrap/cache
 
-# Simple nginx config that definitely works
+# Simple nginx config
 RUN echo 'events {} \
 http { \
     server { \
@@ -37,19 +46,22 @@ http { \
     } \
 }' > /etc/nginx/nginx.conf
 
-# Create simple test files in the exact location nginx expects
-RUN echo "<?php echo 'PHP TEST: File path is ' . __FILE__; ?>" > /var/www/html/public/test.php
-RUN echo "<h1>HTML TEST: File path is /var/www/html/public/test.html</h1>" > /var/www/html/public/test.html
-RUN echo "<?php echo 'Simple PHP works'; ?>" > /var/www/html/public/simple.php
-
-# Install composer (if composer.json exists)
+# Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --prefer-dist; fi
+
+# Install dependencies (should work now with zip tools)
+RUN composer install --no-dev --optimize-autoloader --prefer-dist
 
 # Fix permissions
-RUN chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage \
+    && chmod -R 775 bootstrap/cache
+
+# Create test files
+RUN echo "<?php echo 'BASIC PHP WORKS: ' . date('Y-m-d H:i:s'); ?>" > /var/www/html/public/simple.php
+RUN echo "<h1>HTML TEST WORKS</h1>" > /var/www/html/public/test.html
 
 EXPOSE 8080
 
 # Start command
-CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
+CMD php-fpm -D && nginx -g 'daemon off;'
