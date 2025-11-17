@@ -14,17 +14,8 @@ WORKDIR /var/www/html
 
 COPY . .
 
-# Debug: List files to verify they exist
-RUN echo "=== Checking file structure ===" && \
-    ls -la /var/www/html/ && \
-    echo "=== Checking public directory ===" && \
-    ls -la /var/www/html/public/ && \
-    echo "=== Checking index.php exists ===" && \
-    ls -la /var/www/html/public/index.php
-
-# Create test files
-RUN echo "<?php echo 'PHP TEST: Works at ' . date('Y-m-d H:i:s'); ?>" > /var/www/html/public/test.php
-RUN echo "<html><body><h1>HTML TEST: Works</h1><p>File: <?php echo __FILE__; ?></p></body></html>" > /var/www/html/public/test.html
+# Create nginx directories first
+RUN mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
 
 # Simple nginx config
 RUN echo 'server { \
@@ -44,7 +35,15 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/sites-available/default
 
+# Enable the site
 RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
+# Test that files exist
+RUN echo "=== File Structure ===" && ls -la /var/www/html/public/
+
+# Create test files
+RUN echo "<?php echo 'PHP TEST: Works at ' . date('Y-m-d H:i:s'); ?>" > /var/www/html/public/test.php
+RUN echo "<html><body><h1>HTML TEST: Works</h1></body></html>" > /var/www/html/public/test.html
 
 # Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
