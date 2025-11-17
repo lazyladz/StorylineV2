@@ -1,6 +1,7 @@
 FROM webdevops/php-nginx:8.2
 
-WORKDIR /var/www/html
+# Set the correct working directory that matches Nginx config
+WORKDIR /app
 
 COPY . .
 
