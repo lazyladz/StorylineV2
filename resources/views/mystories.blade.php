@@ -1,0 +1,338 @@
+@extends('layouts.app')
+
+@section('title', 'My Stories - Storyline')
+
+@section('content')
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1><i class="fas fa-book me-2"></i>My Stories</h1>
+                    <p>Manage and view all your published stories</p>
+                </div>
+                <div class="col-lg-6">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-number" id="totalStories">0</div>
+                                <div class="stats-label">Total Stories</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-number" id="totalChapters">0</div>
+                                <div class="stats-label">Total Chapters</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-number" id="totalReads">0</div>
+                                <div class="stats-label">Total Reads</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Content -->
+    <div class="container mb-5">
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <h5 class="filter-title"><i class="fas fa-filter me-2"></i>Filter by Genre</h5>
+            <div class="filter-tags">
+                <span class="filter-tag active" data-genre="all">All</span>
+                <span class="filter-tag" data-genre="Fantasy">Fantasy</span>
+                <span class="filter-tag" data-genre="Thriller">Thriller</span>
+                <span class="filter-tag" data-genre="Horror">Horror</span>
+                <span class="filter-tag" data-genre="Mystery">Mystery</span>
+                <span class="filter-tag" data-genre="Action">Action</span>
+                <span class="filter-tag" data-genre="Sci-Fi">Sci-Fi</span>
+                <span class="filter-tag" data-genre="Romance">Romance</span>
+                <span class="filter-tag" data-genre="Comedy">Comedy</span>
+                <span class="filter-tag" data-genre="Drama">Drama</span>
+                <span class="filter-tag" data-genre="Adventure">Adventure</span>
+                <span class="filter-tag" data-genre="Historical">Historical</span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading your stories...</p>
+        </div>
+
+        <!-- Stories Grid -->
+        <div class="row" id="storiesContainer" style="display: none;">
+            <!-- Story cards will be injected here -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="noStories" class="empty-state d-none">
+            <i class="fas fa-book-open"></i>
+            <h4>No stories yet</h4>
+            <p>You haven't published any stories. Start your writing journey today!</p>
+            <a href="{{ route('write') }}" class="btn btn-main">Write Your First Story</a>
+        </div>
+    </div>
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // DOM Elements
+        const storiesContainer = document.getElementById('storiesContainer');
+        const noStories = document.getElementById('noStories');
+        const loadingState = document.getElementById('loadingState');
+        const filterTags = document.querySelectorAll('.filter-tag');
+        let currentFilter = 'all';
+        let allStories = [];
+
+        console.log('DOM loaded, starting script...');
+
+        // Show success message
+        function showSuccess(message) {
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>
+                ${message}
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 3000);
+        }
+
+        // Show error message
+        function showError(message) {
+            console.error('Showing error:', message);
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-danger position-fixed top-0 end-0 m-3';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <i class="fas fa-exclamation-circle me-2"></i>
+                ${message}
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 5000);
+        }
+
+        // Load stories from Supabase
+        async function loadStoriesFromSupabase() {
+            try {
+                console.log('Fetching stories from {{ route('get-my-stories') }}...');
+                
+                const response = await fetch('{{ route('get-my-stories') }}', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                const result = await response.json();
+                console.log('API Response:', result);
+                
+                if (result.success) {
+                    allStories = result.data || [];
+                    console.log('Stories loaded successfully:', allStories.length, 'stories');
+                    console.log('Stories data:', allStories);
+                    renderStories();
+                } else {
+                    throw new Error(result.error || 'Failed to load stories');
+                }
+            } catch (error) {
+                console.error('Error loading stories:', error);
+                showError('Failed to load stories. Please try again.');
+            } finally {
+                loadingState.style.display = 'none';
+                console.log('Loading state hidden');
+            }
+        }
+
+        // Render stories
+        function renderStories() {
+            console.log('renderStories called with', allStories.length, 'stories');
+            
+            let filteredStories = [...allStories];
+            
+            // Apply filter if not "all"
+            if (currentFilter !== 'all') {
+                filteredStories = allStories.filter(story => {
+                    if (Array.isArray(story.genre)) {
+                        return story.genre.includes(currentFilter);
+                    }
+                    return story.genre === currentFilter;
+                });
+            }
+            
+            console.log('Filtered stories:', filteredStories.length);
+            
+            storiesContainer.innerHTML = '';
+            storiesContainer.style.display = 'block';
+            updateStats(allStories);
+
+            if (filteredStories.length === 0) {
+                console.log('No stories to display');
+                if (currentFilter === 'all') {
+                    noStories.classList.remove('d-none');
+                    storiesContainer.style.display = 'none';
+                } else {
+                    noStories.innerHTML = `
+                        <i class="fas fa-search"></i>
+                        <h4>No stories found</h4>
+                        <p>You don't have any stories in the ${currentFilter} genre.</p>
+                        <a href="{{ route('write') }}" class="btn btn-primary">Write a New Story</a>
+                    `;
+                    noStories.classList.remove('d-none');
+                    storiesContainer.style.display = 'none';
+                }
+                return;
+            }
+
+            noStories.classList.add('d-none');
+            storiesContainer.style.display = 'flex';
+
+            console.log('Creating story cards...');
+            
+            filteredStories.forEach((story, index) => {
+                console.log(`Creating card for story ${index}:`, story);
+                
+                const col = document.createElement('div');
+                col.classList.add('col-xl-4', 'col-lg-6', 'mb-4');
+                
+                const totalReads = story.reads || 0;
+                const rating = story.rating || 0;
+                const chapterCount = story.chapter_count || 0;
+                const firstChapterTitle = story.first_chapter_title || 'No chapters yet';
+                
+                col.innerHTML = `
+                    <div class="card story-card h-100">
+                        <img src="${story.cover_image || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'}" 
+                             class="card-img-top story-img" alt="${story.title}" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="card-title">${story.title || 'Untitled'}</h5>
+                            <p class="card-text">by ${story.author || 'Unknown Author'}</p>
+                            
+                            <!-- Simple genre display -->
+                            <div class="mb-2">
+                                <span class="badge bg-primary">${Array.isArray(story.genre) ? story.genre[0] : (story.genre || 'Unknown')}</span>
+                            </div>
+                            
+                            <div class="chapter-preview mb-2">
+                                <small class="text-muted">${firstChapterTitle}</small>
+                            </div>
+                            
+                            <div class="story-stats mb-3">
+                                <small class="text-muted">${totalReads} reads • ${chapterCount} chapters</small>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <button class="btn btn-primary btn-sm me-1" onclick="viewStory('${story.id}')">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </button>
+                                <button class="btn btn-secondary btn-sm me-1" onclick="editStory('${story.id}')">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteStory('${story.id}')">
+                                    <i class="fas fa-trash me-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                storiesContainer.appendChild(col);
+                console.log(`Card ${index} created and appended`);
+            });
+            
+            console.log('All cards created');
+        }
+
+        // Update stats
+        function updateStats(stories) {
+            const totalStories = stories.length;
+            const totalChapters = stories.reduce((sum, story) => sum + (story.chapter_count || 0), 0);
+            const totalReads = stories.reduce((sum, story) => sum + (story.reads || 0), 0);
+            
+            document.getElementById('totalStories').textContent = totalStories;
+            document.getElementById('totalChapters').textContent = totalChapters;
+            document.getElementById('totalReads').textContent = totalReads.toLocaleString();
+            
+            console.log('Stats updated:', { totalStories, totalChapters, totalReads });
+        }
+
+        // Make functions globally available
+        window.viewStory = function(storyId) {
+            console.log('View story:', storyId);
+            window.location.href = `/stories?id=${storyId}`;
+        };
+
+        window.editStory = function(storyId) {
+            console.log('Edit story:', storyId);
+            window.location.href = `{{ route('write') }}?id=${storyId}`;
+        };
+
+        window.deleteStory = async function(storyId) {
+            console.log('Delete story:', storyId);
+            if (confirm('Are you sure you want to delete this story? This action cannot be undone.')) {
+                try {
+                    console.log('Sending delete request for story:', storyId);
+                    
+                    const response = await fetch('{{ route('delete-story') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            story_id: storyId
+                        })
+                    });
+
+                    const result = await response.json();
+                    console.log('Delete response:', result);
+
+                    if (result.success) {
+                        // Remove from local array and re-render
+                        allStories = allStories.filter(story => story.id != storyId);
+                        renderStories();
+                        showSuccess('Story deleted successfully');
+                        console.log('Story deleted successfully:', storyId);
+                    } else {
+                        throw new Error(result.error || 'Failed to delete story');
+                    }
+                } catch (error) {
+                    console.error('Error deleting story:', error);
+                    showError('Failed to delete story: ' + error.message);
+                }
+            }
+        };
+
+        // Filter functionality
+        filterTags.forEach(tag => {
+            tag.addEventListener('click', function() {
+                filterTags.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.genre;
+                console.log('Filter changed to:', currentFilter);
+                renderStories();
+            });
+        });
+
+        // Initial load
+        console.log('Starting initial load...');
+        loadStoriesFromSupabase();
+    });
+</script>
+@endpush

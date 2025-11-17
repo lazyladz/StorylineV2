@@ -1,0 +1,955 @@
+/* ===== VARIABLES & BASE STYLES ===== */
+:root {
+    --primary: #6d28d9;
+    --primary-dark: #5b21b6;
+    --secondary: #f59e0b;
+    --light: #f8fafc;
+    --dark: #1e293b;
+    --gray: #64748b;
+    --success: #10b981;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: #f8fafc;
+    color: var(--dark);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+/* Only apply padding for fixed navbar pages */
+body.with-fixed-navbar {
+    padding-top: 76px;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+    background-color: white;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    padding: 1rem 0;
+    transition: all 0.3s ease;
+    margin-bottom: 0;
+}
+
+.navbar.fixed-top {
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand svg {
+    color: var(--primary);
+}
+
+.nav-link {
+    font-weight: 500;
+    margin: 0 0.5rem;
+    color: var(--dark);
+    transition: color 0.3s;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--primary);
+}
+
+/* ===== BUTTONS ===== */
+.btn-main {
+    background-color: var(--primary);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+    border: none;
+}
+
+.btn-main:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.3);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+    background-color: rgba(109, 40, 217, 0.1);
+    transform: translateY(-2px);
+}
+
+/* ===== HOMEPAGE STYLES ===== */
+
+/* Hero Section */
+.hero {
+    padding: 8rem 0 5rem;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,0 L100,0 L100,100 Z" fill="rgba(109, 40, 217, 0.05)"/></svg>');
+    background-size: cover;
+}
+
+.hero-text h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-text p {
+    font-size: 1.25rem;
+    color: var(--gray);
+    margin-bottom: 2rem;
+    max-width: 90%;
+}
+
+.hero-img img {
+    max-width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
+    transition: transform 0.5s;
+}
+
+.hero-img img:hover {
+    transform: perspective(1000px) rotateY(0) rotateX(0);
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Features Section */
+.features {
+    padding: 5rem 0;
+    background-color: var(--light);
+}
+
+.feature-item {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.feature-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.feature-icon i {
+    font-size: 2rem;
+    color: white;
+}
+
+.feature-item h3 {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--dark);
+}
+
+.feature-item p {
+    color: var(--gray);
+    line-height: 1.6;
+}
+
+/* Testimonials */
+.testimonials {
+    padding: 5rem 0;
+    background: white;
+}
+
+.testimonial-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    margin: 1rem;
+    height: 100%;
+}
+
+.testimonial-text {
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    position: relative;
+    color: var(--gray);
+    line-height: 1.6;
+}
+
+.testimonial-text::before {
+    content: '"';
+    font-size: 4rem;
+    color: rgba(109, 40, 217, 0.1);
+    position: absolute;
+    top: -1rem;
+    left: -0.5rem;
+}
+
+.testimonial-author {
+    display: flex;
+    align-items: center;
+}
+
+.author-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 1rem;
+}
+
+.author-info h5 {
+    margin: 0;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.author-info p {
+    margin: 0;
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+/* CTA Section */
+.cta {
+    padding: 5rem 0;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    text-align: center;
+}
+
+.cta h2 {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    font-size: 2.5rem;
+}
+
+.cta p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+.cta .btn-main {
+    background-color: white;
+    color: var(--primary);
+    font-size: 1.1rem;
+    padding: 1rem 2rem;
+}
+
+.cta .btn-main:hover {
+    background-color: var(--light);
+    transform: translateY(-2px);
+}
+
+/* ===== PAGE HEADERS ===== */
+.page-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    margin-top: 0;
+}
+
+.page-header h1 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.page-header p {
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+/* Profile Header */
+.profile-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 3rem 0 2rem;
+    margin-bottom: 2rem;
+    margin-top: 0;
+}
+
+.profile-avatar {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 5px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.profile-name {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
+}
+
+.profile-bio {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+    max-width: 600px;
+}
+
+/* Story Header */
+.story-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+    margin-top: 0;
+}
+
+.story-header .container .row .col-lg-4 img.story-cover {
+    width: 250px !important;
+    height: 350px !important;
+    max-width: 250px !important;
+    max-height: 350px !important;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    object-fit: cover;
+    margin-right: 2rem;
+}
+
+.story-header .container .row .col-lg-4 {
+    width: 250px !important;
+    flex: 0 0 250px !important;
+    padding-right: 2.5rem;
+}
+
+.story-header .container .row .col-lg-8 {
+    padding-left: 2rem;
+}
+
+
+.row.align-items-center {
+    align-items: flex-start !important;
+}
+
+.story-title {
+    font-weight: 800;
+    margin-bottom: 1rem;
+    font-size: 2.5rem;
+    color: white;
+}
+
+.story-author {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ===== STATS CARDS ===== */
+.stats-card {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stats-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.stats-section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1.5rem;
+    transition: all 0.3s;
+    border-radius: 8px;
+}
+
+.stat-item:hover {
+    background-color: rgba(109, 40, 217, 0.05);
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--dark);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ===== STORY CARDS ===== */
+.story-card {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s;
+    height: 100%;
+    cursor: pointer;
+}
+
+.story-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.story-img, .story-image {
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.5s;
+}
+
+.story-card:hover .story-img,
+.story-card:hover .story-image {
+    transform: scale(1.05);
+}
+
+.card-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.card-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    line-height: 1.3;
+}
+
+.card-text {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 20px;
+}
+
+.story-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+}
+
+.reads {
+    color: var(--gray);
+}
+
+.rating {
+    color: var(--secondary);
+    font-weight: 600;
+}
+
+.chapter-preview {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin-top: 0.5rem;
+    line-height: 1.4;
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.chapter-title {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-action {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    transition: all 0.3s;
+}
+
+.btn-view {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+}
+
+.btn-view:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-edit {
+    background-color: var(--secondary);
+    color: white;
+    border: none;
+}
+
+.btn-edit:hover {
+    background-color: #e58e0b;
+}
+
+.btn-delete {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+}
+
+.btn-delete:hover {
+    background-color: #dc2626;
+}
+
+/* ===== SECTIONS ===== */
+.section-title {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--dark);
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    border-radius: 2px;
+}
+
+.stories-section, .chapters-section, .chapter-content-section, .comments-section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 2rem;
+}
+
+.stories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.story-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: calc(100% - 180px);
+}
+
+.story-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+}
+
+/* ===== CHAPTERS & CONTENT ===== */
+.chapter-list {
+    list-style: none;
+    padding: 0;
+}
+
+.chapter-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s;
+    cursor: pointer;
+    background: #f8fafc;
+}
+
+.chapter-item:hover {
+    border-color: var(--primary);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    background: white;
+}
+
+.chapter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.chapter-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    margin-bottom: 2rem;
+    color: #334155;
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+}
+
+.chapter-content p {
+    margin-bottom: 1.5rem;
+    color: #334155;
+}
+
+.chapter-content h1, 
+.chapter-content h2, 
+.chapter-content h3, 
+.chapter-content h4, 
+.chapter-content h5, 
+.chapter-content h6 {
+    color: var(--dark);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.chapter-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* ===== COMMENTS ===== */
+.comment-item {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1.5rem 0;
+}
+
+.comment-author {
+    color: var(--dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.comment-date {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.comment-text {
+    color: #475569;
+    line-height: 1.6;
+}
+
+.comment-form {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    border: 1px solid #e2e8f0;
+}
+
+.form-label {
+    color: var(--dark);
+    font-weight: 600;
+}
+
+.form-control {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background: white;
+    color: var(--dark);
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.1);
+    color: var(--dark);
+}
+
+.no-comments {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+}
+
+.no-comments i {
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
+
+.no-comments p {
+    color: #64748b;
+    margin: 0;
+}
+
+/* ===== FILTERS ===== */
+.filter-section {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 2rem;
+}
+
+.filter-title {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--dark);
+}
+
+.filter-tags, .genre-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-tag, .genre-tag {
+    background: rgba(109, 40, 217, 0.1);
+    color: var(--primary);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+}
+
+.filter-tag:hover, .filter-tag.active,
+.genre-tag:hover, .genre-tag.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* ===== EMPTY STATES ===== */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: var(--gray);
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    color: var(--dark);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: var(--gray);
+    margin-bottom: 1.5rem;
+}
+
+/* ===== READING PROGRESS ===== */
+.reading-progress {
+    height: 4px;
+    background-color: #e2e8f0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+.reading-progress-bar {
+    height: 100%;
+    background: linear-gradient(to right, var(--primary), var(--secondary);
+    width: 0%;
+    transition: width 0.3s;
+}
+
+/* ===== FOOTER & SOCIAL ===== */
+footer {
+    background-color: var(--dark);
+    color: white;
+    padding: 2rem 0 1rem;
+    margin-top: 3rem;
+}
+
+.social-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    color: white;
+    transition: all 0.3s;
+}
+
+.social-links a:hover {
+    background-color: var(--primary);
+    transform: translateY(-3px);
+    color: white;
+    text-decoration: none;
+}
+
+.copyright {
+    text-align: center;
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    /* Homepage */
+    .hero {
+        padding: 6rem 0 3rem;
+        text-align: center;
+    }
+    
+    .hero-text h1 {
+        font-size: 2.5rem;
+    }
+    
+    .hero-text p {
+        font-size: 1.1rem;
+        max-width: 100%;
+    }
+    
+    .hero-buttons {
+        justify-content: center;
+    }
+    
+    .cta h2 {
+        font-size: 2rem;
+    }
+    
+    .testimonial-card {
+        margin: 0.5rem;
+    }
+
+    /* Other pages */
+    .page-header, .profile-header, .story-header {
+        padding: 1.5rem 0;
+    }
+    
+    .page-header h1, .profile-name {
+        font-size: 1.75rem;
+    }
+    
+    .story-title {
+        font-size: 2rem;
+    }
+    
+    .stats-card {
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+    
+    .stats-number {
+        font-size: 1.5rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .stories-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .story-cover {
+        max-width: 200px;
+        height: 280px;
+    }
+    
+    .chapter-content {
+        padding: 1.5rem;
+        font-size: 1rem;
+    }
+    
+    .chapters-section, 
+    .chapter-content-section, 
+    .comments-section,
+    .stories-section {
+        padding: 1.5rem;
+    }
+    
+    .genre-section {
+    margin-top: 2.5rem;
+}
+}
