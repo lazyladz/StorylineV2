@@ -12,16 +12,19 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www/html
 
-# Copy application
 COPY . .
 
-# Create Laravel directories
-RUN mkdir -p \
-    storage/framework/views \
-    storage/framework/cache \
-    storage/framework/sessions \
-    storage/logs \
-    bootstrap/cache
+# Debug: List files to verify they exist
+RUN echo "=== Checking file structure ===" && \
+    ls -la /var/www/html/ && \
+    echo "=== Checking public directory ===" && \
+    ls -la /var/www/html/public/ && \
+    echo "=== Checking index.php exists ===" && \
+    ls -la /var/www/html/public/index.php
+
+# Create test files
+RUN echo "<?php echo 'PHP TEST: Works at ' . date('Y-m-d H:i:s'); ?>" > /var/www/html/public/test.php
+RUN echo "<html><body><h1>HTML TEST: Works</h1><p>File: <?php echo __FILE__; ?></p></body></html>" > /var/www/html/public/test.html
 
 # Simple nginx config
 RUN echo 'server { \
@@ -41,18 +44,15 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/sites-available/default
 
+RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
 # Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Install dependencies
 RUN composer install --no-dev --optimize-autoloader
 
 # Fix permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 storage bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
 
-# Optimize Laravel
-RUN php artisan config:cache && php artisan view:cache
+EXPOSE 8080
 
-# Start script optimized for Render
-CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
+CMD php-fpm -D && nginx -g 'daemon off;'
