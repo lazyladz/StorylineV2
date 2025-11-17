@@ -1,12 +1,30 @@
 FROM php:8.2-fpm
 
-# Install nginx
-RUN apt-get update && apt-get install -y nginx
+# Install system dependencies INCLUDING GIT
+RUN apt-get update && apt-get install -y \
+    nginx \
+    git \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
 
 WORKDIR /var/www/html
+
+# Copy application
 COPY . .
 
-# Replace entire nginx config (no sites-available/enabled needed)
+# Create Laravel directories
+RUN mkdir -p \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/logs \
+    bootstrap/cache
+
+# Replace entire nginx config
 RUN echo 'events {} \
 http { \
     server { \
@@ -29,14 +47,22 @@ http { \
 
 # Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader
 
-# Create test files
-RUN echo "<?php echo 'PHP TEST OK'; ?>" > /var/www/html/public/test.php
-RUN echo "<h1>HTML TEST OK</h1>" > /var/www/html/public/test.html
+# Install dependencies with prefer-dist to avoid git issues
+RUN composer install --no-dev --optimize-autoloader --prefer-dist
 
-RUN chown -R www-data:www-data /var/www/html
+# Fix permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 storage bootstrap/cache
+
+# Create test files for debugging
+RUN echo "<?php echo 'PHP TEST: Working at ' . date('Y-m-d H:i:s'); ?>" > /var/www/html/public/test.php
+RUN echo "<h1>HTML TEST: Working</h1>" > /var/www/html/public/test.html
+
+# Optimize Laravel
+RUN php artisan config:cache && php artisan view:cache
 
 EXPOSE 8080
 
+# Start command
 CMD php-fpm -F -R & nginx -g 'daemon off;'
