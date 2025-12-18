@@ -177,337 +177,428 @@ class StoryController extends Controller
             'storyId' => null
         ]);
     }
-
-    public function edit($id)
-    {
-        try {
-            $user = Auth::user();
-            $storyId = intval($id);
-            
-            $stories = $this->supabase->select('stories', '*', ['id' => $storyId, 'user_id' => $user->id]);
-            
-            if (empty($stories)) {
-                return redirect()->route('write')->with('error', 'Story not found or access denied.');
-            }
-
-            $existingStory = $stories[0];
-            
-            if (isset($existingStory['genre']) && is_string($existingStory['genre'])) {
-                $existingStory['genre'] = json_decode($existingStory['genre'], true) ?? [];
-            }
-            
-            if (isset($existingStory['chapters']) && is_string($existingStory['chapters'])) {
-                $existingStory['chapters'] = json_decode($existingStory['chapters'], true) ?? [];
-            }
-
-            return view('write', [
-                'isEditMode' => true,
-                'existingStory' => $existingStory,
-                'storyId' => $storyId
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error("Error loading story for editing: " . $e->getMessage());
-            return redirect()->route('write')->with('error', 'Error loading story for editing.');
+public function edit($id)
+{
+    try {
+        $user = Auth::user();
+        
+        // Get Supabase user ID
+        $supabaseUsers = $this->supabase->select('users', 'id', ['email' => $user->email]);
+        
+        if (empty($supabaseUsers)) {
+            return redirect()->route('write')->with('error', 'User not found in Supabase.');
         }
+        
+        $supabaseUserId = $supabaseUsers[0]['id'];
+        $storyId = intval($id);
+        
+        $stories = $this->supabase->select('stories', '*', ['id' => $storyId, 'user_id' => $supabaseUserId]);
+        
+        if (empty($stories)) {
+            return redirect()->route('write')->with('error', 'Story not found or access denied.');
+        }
+
+        $existingStory = $stories[0];
+        
+        if (isset($existingStory['genre']) && is_string($existingStory['genre'])) {
+            $existingStory['genre'] = json_decode($existingStory['genre'], true) ?? [];
+        }
+        
+        if (isset($existingStory['chapters']) && is_string($existingStory['chapters'])) {
+            $existingStory['chapters'] = json_decode($existingStory['chapters'], true) ?? [];
+        }
+
+        return view('write', [
+            'isEditMode' => true,
+            'existingStory' => $existingStory,
+            'storyId' => $storyId
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error("Error loading story for editing: " . $e->getMessage());
+        return redirect()->route('write')->with('error', 'Error loading story for editing.');
     }
+}
 
     public function saveStory(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            
-            $validated = $request->validate([
-                'title' => 'required|string|max:255',
-                'author' => 'required|string|max:255',
-                'description' => 'nullable|string|max:500',
-                'genre' => 'required|array',
-                'cover_image' => 'required|string',
-                'chapters' => 'required|array',
-            ]);
-
-            \Log::info("Saving story: " . $validated['title']);
-
-            $storyData = [
-                'title' => $validated['title'],
-                'author' => $validated['author'],
-                'description' => $validated['description'] ?? '',
-                'genre' => json_encode($validated['genre'], JSON_UNESCAPED_UNICODE),
-                'chapters' => json_encode($validated['chapters'], JSON_UNESCAPED_UNICODE),
-                'cover_image' => $validated['cover_image'],
-                'user_id' => $user->id,
-                'reads' => 0,
-                'rating' => 0,
-                'created_at' => now()->toISOString(),
-                'updated_at' => now()->toISOString()
-            ];
-
-            $result = $this->supabase->insert('stories', $storyData);
-
-            \Log::info("Story saved successfully: " . $validated['title']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Story published successfully!',
-                'data' => $result
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Error saving story: ' . $e->getMessage());
+{
+    try {
+        $user = Auth::user();
+        
+        // Get Supabase user ID
+        $supabaseUsers = $this->supabase->select('users', 'id', ['email' => $user->email]);
+        
+        if (empty($supabaseUsers)) {
+            \Log::error('No Supabase user found for email: ' . $user->email);
             return response()->json([
                 'success' => false,
-                'error' => 'Error saving story: ' . $e->getMessage()
-            ], 500);
+                'error' => 'User not found in Supabase'
+            ], 404);
         }
-    }
+        
+        $supabaseUserId = $supabaseUsers[0]['id'];
+        
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'author' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+            'genre' => 'required|array',
+            'cover_image' => 'required|string',
+            'chapters' => 'required|array',
+            'is_nsfw' => 'boolean' // ADD THIS
+        ]);
 
+        \Log::info("Saving story for Supabase user: " . $supabaseUserId);
+
+        $storyData = [
+            'title' => $validated['title'],
+            'author' => $validated['author'],
+            'description' => $validated['description'] ?? '',
+            'genre' => json_encode($validated['genre'], JSON_UNESCAPED_UNICODE),
+            'chapters' => json_encode($validated['chapters'], JSON_UNESCAPED_UNICODE),
+            'cover_image' => $validated['cover_image'],
+            'user_id' => $supabaseUserId,
+            'is_nsfw' => $validated['is_nsfw'] ?? false, // ADD THIS
+            'created_at' => now()->toISOString(),
+            'updated_at' => now()->toISOString()
+        ];
+
+        $result = $this->supabase->insert('stories', $storyData);
+
+        \Log::info("Story saved successfully: " . $validated['title']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Story published successfully!',
+            'data' => $result
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error saving story: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => 'Error saving story: ' . $e->getMessage()
+        ], 500);
+    }
+}
     public function updateStory(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            
-            $validated = $request->validate([
-                'id' => 'required|integer',
-                'title' => 'required|string|max:255',
-                'author' => 'required|string|max:255',
-                'description' => 'nullable|string|max:500',
-                'genre' => 'required|array',
-                'cover_image' => 'required|string',
-                'chapters' => 'required|array',
-            ]);
-
-            $existingStory = $this->supabase->select('stories', 'id', [
-                'id' => $validated['id'],
-                'user_id' => $user->id
-            ]);
-
-            if (empty($existingStory)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Story not found or access denied'
-                ], 404);
-            }
-
-            $storyData = [
-                'title' => $validated['title'],
-                'author' => $validated['author'],
-                'description' => $validated['description'] ?? '',
-                'genre' => json_encode($validated['genre'], JSON_UNESCAPED_UNICODE),
-                'chapters' => json_encode($validated['chapters'], JSON_UNESCAPED_UNICODE),
-                'cover_image' => $validated['cover_image'],
-                'updated_at' => now()->toISOString()
-            ];
-
-            $result = $this->supabase->update('stories', ['id' => $validated['id']], $storyData);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Story updated successfully!',
-                'data' => $result
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Error updating story: ' . $e->getMessage());
+{
+    try {
+        $user = Auth::user();
+        
+        // Get Supabase user ID
+        $supabaseUsers = $this->supabase->select('users', 'id', ['email' => $user->email]);
+        
+        if (empty($supabaseUsers)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Error updating story: ' . $e->getMessage()
-            ], 500);
+                'error' => 'User not found in Supabase'
+            ], 404);
         }
+        
+        $supabaseUserId = $supabaseUsers[0]['id'];
+        
+        $validated = $request->validate([
+            'id' => 'required|integer',
+            'title' => 'required|string|max:255',
+            'author' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+            'genre' => 'required|array',
+            'cover_image' => 'required|string',
+            'chapters' => 'required|array',
+            'is_nsfw' => 'boolean' // ADD THIS
+        ]);
+
+        $existingStory = $this->supabase->select('stories', 'id', [
+            'id' => $validated['id'],
+            'user_id' => $supabaseUserId
+        ]);
+
+        if (empty($existingStory)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Story not found or access denied'
+            ], 404);
+        }
+
+        $storyData = [
+            'title' => $validated['title'],
+            'author' => $validated['author'],
+            'description' => $validated['description'] ?? '',
+            'genre' => json_encode($validated['genre'], JSON_UNESCAPED_UNICODE),
+            'chapters' => json_encode($validated['chapters'], JSON_UNESCAPED_UNICODE),
+            'cover_image' => $validated['cover_image'],
+            'is_nsfw' => $validated['is_nsfw'] ?? false, // ADD THIS
+            'updated_at' => now()->toISOString()
+        ];
+
+        $result = $this->supabase->update('stories', ['id' => $validated['id']], $storyData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Story updated successfully!',
+            'data' => $result
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error updating story: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => 'Error updating story: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     public function getMyStories(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            
-            \Log::info('getMyStories called', [
-                'user_id' => $user->id,
-                'request_id' => $request->id
-            ]);
+{
+    try {
+        $user = Auth::user();
+        
+        \Log::info('getMyStories called', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'user_name' => $user->name
+        ]);
 
-            if ($request->has('id')) {
-                $story_id = intval($request->id);
-                $stories = $this->supabase->select('stories', '*', ['id' => $story_id]);
-                $load_full_content = true;
-            } else {
-                $stories = $this->supabase->select('stories', '*', ['user_id' => $user->id]);
-                $load_full_content = false;
-            }
-
-            \Log::info('Raw stories data from Supabase', [
-                'stories_count' => is_array($stories) ? count($stories) : 0,
-                'load_full_content' => $load_full_content
-            ]);
-
-            if (empty($stories)) {
-                return response()->json(['success' => true, 'data' => []]);
-            }
-
-            $formattedStories = [];
-            
-            foreach ($stories as $story) {
-                $formattedStory = $this->formatStory($story, $load_full_content);
-                $formattedStories[] = $formattedStory;
-            }
-            
-            if ($request->has('id')) {
-                return response()->json([
-                    'success' => true, 
-                    'data' => $formattedStories[0] ?? null
-                ], 200, [], JSON_UNESCAPED_UNICODE);
-            } else {
-                return response()->json([
-                    'success' => true, 
-                    'data' => $formattedStories
-                ], 200, [], JSON_UNESCAPED_UNICODE);
-            }
-
-        } catch (\Exception $e) {
-            \Log::error('Error in getMyStories: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Database error: ' . $e->getMessage()
-            ], 500);
+        // First, get the Supabase user ID for this email
+        $supabaseUsers = $this->supabase->select('users', 'id', ['email' => $user->email]);
+        
+        \Log::info('Supabase users found for email', [
+            'email' => $user->email,
+            'found_count' => is_array($supabaseUsers) ? count($supabaseUsers) : 0,
+            'supabase_users' => $supabaseUsers
+        ]);
+        
+        if (empty($supabaseUsers)) {
+            \Log::warning('No Supabase user found for email: ' . $user->email);
+            return response()->json(['success' => true, 'data' => []]);
         }
-    }
+        
+        $supabaseUserId = $supabaseUsers[0]['id'];
+        
+        \Log::info('Found Supabase user ID', [
+            'laravel_user_id' => $user->id,
+            'supabase_user_id' => $supabaseUserId,
+            'email' => $user->email
+        ]);
 
-    public function getAllStories()
-    {
-        try {
-            $stories = $this->supabase->select('stories', '*', []);
-            
-            \Log::info('getAllStories result', [
-                'stories_count' => is_array($stories) ? count($stories) : 0
+        if ($request->has('id')) {
+            $story_id = intval($request->id);
+            $stories = $this->supabase->select('stories', '*', ['id' => $story_id]);
+            $load_full_content = true;
+        } else {
+            $stories = $this->supabase->select('stories', '*', ['user_id' => $supabaseUserId]);
+            $load_full_content = false;
+        }
+
+        \Log::info('Raw stories data from Supabase', [
+            'stories_count' => is_array($stories) ? count($stories) : 0,
+            'load_full_content' => $load_full_content,
+            'query_user_id' => $supabaseUserId
+        ]);
+
+        if (empty($stories)) {
+            \Log::info('No stories found for user', [
+                'supabase_user_id' => $supabaseUserId,
+                'email' => $user->email
             ]);
+            return response()->json(['success' => true, 'data' => []]);
+        }
 
-            if (empty($stories)) {
-                return response()->json(['success' => true, 'data' => []]);
-            }
-
-            $formattedStories = [];
-            
-            foreach ($stories as $story) {
-                $formattedStory = $this->formatStory($story, false);
-                $formattedStories[] = $formattedStory;
-            }
-            
+        $formattedStories = [];
+        
+        foreach ($stories as $story) {
+            $formattedStory = $this->formatStory($story, $load_full_content);
+            $formattedStories[] = $formattedStory;
+        }
+        
+        \Log::info('Formatted stories ready', [
+            'formatted_count' => count($formattedStories)
+        ]);
+        
+        if ($request->has('id')) {
+            return response()->json([
+                'success' => true, 
+                'data' => $formattedStories[0] ?? null
+            ], 200, [], JSON_UNESCAPED_UNICODE);
+        } else {
             return response()->json([
                 'success' => true, 
                 'data' => $formattedStories
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Error in getAllStories: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Database error: ' . $e->getMessage()
-            ], 500);
+            ], 200, [], JSON_UNESCAPED_UNICODE);
         }
+
+    } catch (\Exception $e) {
+        \Log::error('Error in getMyStories: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        return response()->json([
+            'success' => false,
+            'error' => 'Database error: ' . $e->getMessage()
+        ], 500);
     }
+}
+
+    public function getAllStories(Request $request)
+{
+    try {
+        $user = Auth::user();
+        
+        // Get user's NSFW preference from Supabase
+        $supabaseUsers = $this->supabase->select('users', 'show_nsfw', ['email' => $user->email]);
+        $showNsfw = !empty($supabaseUsers) && ($supabaseUsers[0]['show_nsfw'] ?? false);
+        
+        $stories = $this->supabase->select('stories', '*', []);
+        
+        \Log::info('getAllStories result', [
+            'stories_count' => is_array($stories) ? count($stories) : 0,
+            'show_nsfw' => $showNsfw
+        ]);
+
+        if (empty($stories)) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $formattedStories = [];
+        
+        foreach ($stories as $story) {
+            // Filter out NSFW stories if user has disabled them
+            if (!$showNsfw && ($story['is_nsfw'] ?? false)) {
+                continue;
+            }
+            
+            $formattedStory = $this->formatStory($story, false);
+            $formattedStories[] = $formattedStory;
+        }
+        
+        return response()->json([
+            'success' => true, 
+            'data' => $formattedStories
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error in getAllStories: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => 'Database error: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
     public function deleteStory(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            $storyId = $request->input('story_id');
-            
-            \Log::info('deleteStory called', [
-                'user_id' => $user->id,
-                'story_id' => $storyId
-            ]);
-
-            $story = $this->supabase->select('stories', 'id', ['id' => $storyId, 'user_id' => $user->id]);
-            
-            if (empty($story)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Story not found or access denied'
-                ], 404);
-            }
-
-            $result = $this->supabase->delete('stories', ['id' => $storyId]);
-
-            \Log::info('Story deleted successfully', ['story_id' => $storyId]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Story deleted successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Error in deleteStory: ' . $e->getMessage());
+{
+    try {
+        $user = Auth::user();
+        
+        // Get Supabase user ID
+        $supabaseUsers = $this->supabase->select('users', 'id', ['email' => $user->email]);
+        
+        if (empty($supabaseUsers)) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
+                'error' => 'User not found in Supabase'
+            ], 404);
         }
+        
+        $supabaseUserId = $supabaseUsers[0]['id'];
+        $storyId = $request->input('story_id');
+        
+        \Log::info('deleteStory called', [
+            'email' => $user->email,
+            'supabase_user_id' => $supabaseUserId,
+            'story_id' => $storyId
+        ]);
+
+        $story = $this->supabase->select('stories', 'id', ['id' => $storyId, 'user_id' => $supabaseUserId]);
+        
+        if (empty($story)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Story not found or access denied'
+            ], 404);
+        }
+
+        $result = $this->supabase->delete('stories', ['id' => $storyId]);
+
+        \Log::info('Story deleted successfully', ['story_id' => $storyId]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Story deleted successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error in deleteStory: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     private function formatStory($story, $load_full_content = false)
-    {
-        $genre = [];
-        if (isset($story['genre'])) {
-            if (is_string($story['genre'])) {
-                $genre_json = stripslashes($story['genre']);
-                $genre = json_decode($genre_json, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    $genre = ['Unknown'];
-                }
-            } else {
-                $genre = $story['genre'];
+{
+    $genre = [];
+    if (isset($story['genre'])) {
+        if (is_string($story['genre'])) {
+            $genre_json = stripslashes($story['genre']);
+            $genre = json_decode($genre_json, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $genre = ['Unknown'];
             }
+        } else {
+            $genre = $story['genre'];
         }
-        
-        $chapters = [];
-        $chapter_count = 0;
-        $first_chapter_title = 'No chapters yet';
-        
-        if (isset($story['chapters'])) {
-            if (is_string($story['chapters'])) {
-                $chapters_json = stripslashes($story['chapters']);
-                $chapters_data = json_decode($chapters_json, true, 512, JSON_UNESCAPED_UNICODE);
+    }
+    
+    $chapters = [];
+    $chapter_count = 0;
+    $first_chapter_title = 'No chapters yet';
+    
+    if (isset($story['chapters'])) {
+        if (is_string($story['chapters'])) {
+            $chapters_json = stripslashes($story['chapters']);
+            $chapters_data = json_decode($chapters_json, true, 512, JSON_UNESCAPED_UNICODE);
+            
+            if (json_last_error() === JSON_ERROR_NONE && is_array($chapters_data)) {
+                $chapter_count = count($chapters_data);
                 
-                if (json_last_error() === JSON_ERROR_NONE && is_array($chapters_data)) {
-                    $chapter_count = count($chapters_data);
-                    
-                    if ($load_full_content) {
-                        $chapters = $chapters_data;
-                    } else {
-                        $chapters = [];
-                        if ($chapter_count > 0 && isset($chapters_data[0]['title'])) {
-                            $first_chapter_title = $chapters_data[0]['title'];
-                        }
+                if ($load_full_content) {
+                    $chapters = $chapters_data;
+                } else {
+                    $chapters = [];
+                    if ($chapter_count > 0 && isset($chapters_data[0]['title'])) {
+                        $first_chapter_title = $chapters_data[0]['title'];
                     }
                 }
-            } else {
-                $chapters = $story['chapters'];
-                $chapter_count = count($chapters);
-                if ($chapter_count > 0 && isset($chapters[0]['title'])) {
-                    $first_chapter_title = $chapters[0]['title'];
-                }
+            }
+        } else {
+            $chapters = $story['chapters'];
+            $chapter_count = count($chapters);
+            if ($chapter_count > 0 && isset($chapters[0]['title'])) {
+                $first_chapter_title = $chapters[0]['title'];
             }
         }
-        
-        $formattedStory = [
-            'id' => $story['id'] ?? null,
-            'title' => $story['title'] ?? 'Untitled',
-            'author' => $story['author'] ?? 'Unknown Author',
-            'description' => $story['description'] ?? '',
-            'genre' => $genre,
-            'cover_image' => $story['cover_image'] ?? 'https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-            'reads' => $story['reads'] ?? 0,
-            'rating' => $story['rating'] ?? 0,
-            'created_at' => $story['created_at'] ?? now()->toISOString()
-        ];
-        
-        if ($load_full_content) {
-            $formattedStory['chapters'] = $chapters;
-        } else {
-            $formattedStory['chapter_count'] = $chapter_count;
-            $formattedStory['first_chapter_title'] = $first_chapter_title;
-            $formattedStory['chapters'] = [];
-        }
-        
-        return $formattedStory;
     }
+    
+    $formattedStory = [
+        'id' => $story['id'] ?? null,
+        'title' => $story['title'] ?? 'Untitled',
+        'author' => $story['author'] ?? 'Unknown Author',
+        'description' => $story['description'] ?? '',
+        'genre' => $genre,
+        'cover_image' => $story['cover_image'] ?? 'https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+        'is_nsfw' => $story['is_nsfw'] ?? false, // ADD THIS
+        'created_at' => $story['created_at'] ?? now()->toISOString()
+    ];
+    
+    if ($load_full_content) {
+        $formattedStory['chapters'] = $chapters;
+    } else {
+        $formattedStory['chapter_count'] = $chapter_count;
+        $formattedStory['first_chapter_title'] = $first_chapter_title;
+        $formattedStory['chapters'] = [];
+    }
+    
+    return $formattedStory;
+}
 }

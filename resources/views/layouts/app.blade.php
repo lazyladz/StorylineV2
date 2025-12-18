@@ -372,7 +372,7 @@
                 </div>
                 <div>
                   <label class="custom-switch">
-                    <input type="checkbox" id="modalShowNsfw">
+                    <input type="checkbox" id="modalShowNsfw" {{ isset($showNsfw) && $showNsfw ? 'checked' : '' }}>
                     <span class="slider"></span>
                   </label>
                 </div>
@@ -416,37 +416,9 @@
         });
       });
 
-      // Load current NSFW setting when modal opens
-      const settingsModal = document.getElementById('settingsModal');
+      // Settings modal toggle
       const modalToggle = document.getElementById('modalShowNsfw');
-      
-      if (settingsModal && modalToggle) {
-        settingsModal.addEventListener('show.bs.modal', async function () {
-          console.log('Settings modal opening...');
-          // Fetch current setting from server
-          try {
-            const response = await fetch('{{ route("settings.get") }}', {
-              headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-              }
-            });
-            const data = await response.json();
-            console.log('Settings loaded:', data);
-            
-            if (data.success && data.settings) {
-              console.log('show_nsfw value:', data.settings.show_nsfw);
-              console.log('show_nsfw type:', typeof data.settings.show_nsfw);
-              
-              // Convert 1/0 to boolean properly
-              modalToggle.checked = !!data.settings.show_nsfw;
-              console.log('Toggle set to:', modalToggle.checked);
-            }
-          } catch (error) {
-            console.error('Error loading settings:', error);
-          }
-        });
-
-        // Settings modal toggle save
+      if (modalToggle) {
         modalToggle.addEventListener('change', function() {
           const checked = this.checked;
           const statusEl = document.getElementById('modalSaveStatus');

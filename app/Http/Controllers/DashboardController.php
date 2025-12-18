@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\UserSettings;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,99 +17,142 @@ class DashboardController extends Controller
     }
 
     public function index()
-{
-    try {
-        $user = Auth::user();
-        
-        \Log::info('Dashboard loading for user', [
-            'user_id' => $user->id,
-            'supabase_id' => $user->supabase_id,
-            'email' => $user->email
-        ]);
+    {
+        try {
+            $user = Auth::user();
+            
+            // Get user settings using UserSettings model
+            $settingsModel = new UserSettings($this->supabase, $user->email);
+            $showNsfw = $settingsModel->get('show_nsfw', false);
+            
+            \Log::info('Dashboard loading', [
+                'user_email' => $user->email,
+                'show_nsfw_setting' => $showNsfw,
+                'all_settings' => $settingsModel->all()
+            ]);
+            
+            \Log::info('Dashboard loading for user', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'show_nsfw' => $showNsfw
+            ]);
 
-        // Get user's stories using the SUPABASE ID, not Laravel ID
-        $userStories = $this->supabase->select('stories', '*', ['user_id' => $user->supabase_id]);
-        
-        \Log::info('User stories query', [
-            'supabase_id_used' => $user->supabase_id,
-            'stories_count' => is_array($userStories) ? count($userStories) : 0
-        ]);
+            // Get user's stories using the SUPABASE ID
+            $userStories = $this->supabase->select('stories', '*', ['user_id' => $user->supabase_id]);
 
-        // Get all stories (for genre sections)
-        $allStories = $this->supabase->select('stories', '*', []);
-        
-        \Log::info('Dashboard data fetched', [
-            'user_stories_count' => is_array($userStories) ? count($userStories) : 0,
-            'all_stories_count' => is_array($allStories) ? count($allStories) : 0
-        ]);
+            // Get all stories
+            $allStories = $this->supabase->select('stories', '*', []);
+            
+            \Log::info('Stories before filtering', [
+                'total_stories' => is_array($allStories) ? count($allStories) : 0,
+                'nsfw_count' => is_array($allStories) ? count(array_filter($allStories, function($s) { return $s['is_nsfw'] ?? false; })) : 0
+            ]);
 
-        // Get reading progress - also update this to use supabase_id
-        $continueStories = $this->getReadingProgress($user);
+            // Get reading progress
+            $continueStories = $this->getReadingProgress($user);
 
-        // Format stories
-        $userStories = is_array($userStories) ? array_map([$this, 'formatStory'], $userStories) : [];
-        $allStories = is_array($allStories) ? array_map([$this, 'formatStory'], $allStories) : [];
-        $continueStories = is_array($continueStories) ? array_map([$this, 'formatStory'], $continueStories) : [];
+            // Filter NSFW stories based on user preference
+            $allStories = $this->filterNsfwStories($allStories, $showNsfw);
+            $continueStories = $this->filterNsfwStories($continueStories, $showNsfw);
+            
+            \Log::info('Stories after filtering', [
+                'show_nsfw' => $showNsfw,
+                'filtered_count' => is_array($allStories) ? count($allStories) : 0
+            ]);
+            // Don't filter user's own stories
 
-        $popularGenres = ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action'];
+            // Format stories
+            $userStories = is_array($userStories) ? array_map([$this, 'formatStory'], $userStories) : [];
+            $allStories = is_array($allStories) ? array_map([$this, 'formatStory'], $allStories) : [];
+            $continueStories = is_array($continueStories) ? array_map([$this, 'formatStory'], $continueStories) : [];
 
-        return view('dashboard.index', compact(
-            'userStories', 
-            'allStories', 
-            'continueStories', 
-            'popularGenres'
-        ));
+            $popularGenres = ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action'];
 
-    } catch (\Exception $e) {
-        \Log::error("Dashboard error: " . $e->getMessage());
-        \Log::error("Dashboard stack trace: " . $e->getTraceAsString());
-        
-        return view('dashboard.index', [
-            'userStories' => [],
-            'allStories' => [],
-            'continueStories' => [],
-            'popularGenres' => ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action']
-        ]);
+            return view('dashboard.index', compact(
+                'userStories', 
+                'allStories', 
+                'continueStories', 
+                'popularGenres',
+                'showNsfw'  // ← ADD THIS!
+            ));
+
+        } catch (\Exception $e) {
+            \Log::error("Dashboard error: " . $e->getMessage());
+            \Log::error("Dashboard stack trace: " . $e->getTraceAsString());
+            
+            return view('dashboard.index', [
+                'userStories' => [],
+                'allStories' => [],
+                'continueStories' => [],
+                'popularGenres' => ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action']
+            ]);
+        }
     }
-}
 
-private function getReadingProgress($user)
-{
-    try {
-        // Use supabase_id for reading progress too
-        $progressRecords = $this->supabase->select('reading_progress', '*', ['user_id' => $user->supabase_id]);
-        $continueStories = [];
+    private function filterNsfwStories($stories, $showNsfw)
+    {
+        if (!is_array($stories) || empty($stories)) {
+            return [];
+        }
 
-        if ($progressRecords && is_array($progressRecords)) {
-            foreach ($progressRecords as $progress) {
-                if (isset($progress['story_id'])) {
-                    $story = $this->supabase->select('stories', '*', ['id' => $progress['story_id']]);
-                    if ($story && is_array($story) && count($story) > 0) {
-                        $story = $story[0];
-                        $continueStories[] = array_merge($story, [
-                            'current_chapter_index' => $progress['current_chapter_index'] ?? 0,
-                            'progress_percentage' => $progress['progress_percentage'] ?? 0,
-                            'last_read_at' => $progress['last_read_at'] ?? now()
-                        ]);
+        if ($showNsfw) {
+            \Log::info('NSFW filter: Showing all stories (setting is ON)');
+            return $stories; // Show all stories
+        }
+
+        // Filter out NSFW stories
+        $filtered = array_filter($stories, function($story) {
+            // Convert 1/0 to boolean properly
+            $isNsfw = !empty($story['is_nsfw']);
+            // Keep story if it's NOT nsfw
+            return !$isNsfw;
+        });
+        
+        \Log::info('NSFW filter applied', [
+            'show_nsfw' => $showNsfw,
+            'before_count' => count($stories),
+            'after_count' => count($filtered),
+            'removed_count' => count($stories) - count($filtered)
+        ]);
+
+        return array_values($filtered); // Re-index array
+    }
+
+    private function getReadingProgress($user)
+    {
+        try {
+            $progressRecords = $this->supabase->select('reading_progress', '*', ['user_id' => $user->supabase_id]);
+            $continueStories = [];
+
+            if ($progressRecords && is_array($progressRecords)) {
+                foreach ($progressRecords as $progress) {
+                    if (isset($progress['story_id'])) {
+                        $story = $this->supabase->select('stories', '*', ['id' => $progress['story_id']]);
+                        if ($story && is_array($story) && count($story) > 0) {
+                            $story = $story[0];
+                            $continueStories[] = array_merge($story, [
+                                'current_chapter_index' => $progress['current_chapter_index'] ?? 0,
+                                'progress_percentage' => $progress['progress_percentage'] ?? 0,
+                                'last_read_at' => $progress['last_read_at'] ?? now()
+                            ]);
+                        }
                     }
                 }
+                
+                usort($continueStories, function($a, $b) {
+                    $timeA = strtotime($a['last_read_at'] ?? '2000-01-01');
+                    $timeB = strtotime($b['last_read_at'] ?? '2000-01-01');
+                    return $timeB - $timeA;
+                });
+                
+                return array_slice($continueStories, 0, 6);
             }
-            
-            // Sort by last_read_at descending
-            usort($continueStories, function($a, $b) {
-                $timeA = strtotime($a['last_read_at'] ?? '2000-01-01');
-                $timeB = strtotime($b['last_read_at'] ?? '2000-01-01');
-                return $timeB - $timeA;
-            });
-            
-            return array_slice($continueStories, 0, 6);
+        } catch (\Exception $e) {
+            \Log::error("Reading progress error: " . $e->getMessage());
         }
-    } catch (\Exception $e) {
-        \Log::error("Reading progress error: " . $e->getMessage());
+        
+        return [];
     }
-    
-    return [];
-}
 
     private function formatStory($story)
     {
@@ -124,11 +168,11 @@ private function getReadingProgress($user)
                 'rating' => 0,
                 'created_at' => now()->toISOString(),
                 'current_chapter_index' => 0,
-                'progress_percentage' => 0
+                'progress_percentage' => 0,
+                'is_nsfw' => false
             ];
         }
 
-        // Handle genre data
         $genre = [];
         if (isset($story['genre'])) {
             if (is_string($story['genre'])) {
@@ -142,7 +186,6 @@ private function getReadingProgress($user)
             }
         }
         
-        // Handle chapters data
         $chapters = [];
         if (isset($story['chapters'])) {
             if (is_string($story['chapters'])) {
@@ -167,11 +210,11 @@ private function getReadingProgress($user)
             'rating' => $story['rating'] ?? 0,
             'created_at' => $story['created_at'] ?? now()->toISOString(),
             'current_chapter_index' => $story['current_chapter_index'] ?? 0,
-            'progress_percentage' => $story['progress_percentage'] ?? 0
+            'progress_percentage' => $story['progress_percentage'] ?? 0,
+            'is_nsfw' => $story['is_nsfw'] ?? false
         ];
     }
 
-    // Helper methods for the view
     public function getGenreColor($genre)
     {
         $colors = [

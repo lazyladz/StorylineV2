@@ -143,6 +143,23 @@
               </div>
             </div>
 
+            <!-- Add this after the genre selection section -->
+<div class="mb-4">
+    <label class="form-label">Content Rating</label>
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="isNsfw" name="is_nsfw" 
+               {{ $isEditMode && isset($existingStory['is_nsfw']) && $existingStory['is_nsfw'] ? 'checked' : '' }}>
+        <label class="form-check-label" for="isNsfw">
+            <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
+            <strong>18+ Content (NSFW)</strong>
+        </label>
+        <div class="form-text">
+            Enable this if your story contains mature themes, violence, or explicit content.
+            Stories marked as 18+ will be hidden from users who have disabled NSFW content.
+        </div>
+    </div>
+</div>
+
             <hr class="my-4">
 
             <!-- Chapters Section -->
@@ -560,17 +577,19 @@
 
         try {
           // Prepare story data
-          const storyData = {
-            title: storyTitle.value,
-            author: storyAuthor.value,
-            description: storyDescription.value,
-            genre: selectedGenres,
-            cover_image: document.getElementById('previewImage').src,
-            chapters: quillEditors.map((q, i) => ({
-              title: document.querySelectorAll('.chapter-title-input')[i].value || `Chapter ${i + 1}`,
-              content: q.root.innerHTML
-            }))
-          };
+          // Prepare story data
+const storyData = {
+    title: storyTitle.value,
+    author: storyAuthor.value,
+    description: storyDescription.value,
+    genre: selectedGenres,
+    cover_image: document.getElementById('previewImage').src,
+    chapters: quillEditors.map((q, i) => ({
+        title: document.querySelectorAll('.chapter-title-input')[i].value || `Chapter ${i + 1}`,
+        content: q.root.innerHTML
+    })),
+    is_nsfw: document.getElementById('isNsfw').checked // ADD THIS LINE
+};
 
           // Add story ID if in edit mode
           if (isEditMode) {

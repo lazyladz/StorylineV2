@@ -135,48 +135,62 @@ class SupabaseService
         }
     }
 
+    /**
+     * Update records in Supabase
+     * FIXED: Now properly sends query parameters in the URL
+     */
     public function update($table, $filters, $data)
-    {
-        try {
-            $url = "{$this->url}/rest/v1/{$table}";
-            
-            $queryParams = [];
-            foreach ($filters as $key => $value) {
-                $queryParams[$key] = 'eq.' . $value;
-            }
-
-            Log::info("✏️ Supabase Update", [
-                'table' => $table,
-                'filters' => $filters,
-                'data' => $data
-            ]);
-
-            $response = Http::withHeaders([
-                'apikey' => $this->key,
-                'Authorization' => 'Bearer ' . $this->key,
-                'Content-Type' => 'application/json',
-                'Prefer' => 'return=representation',
-            ])->timeout(30)->patch($url, $data, ['query' => $queryParams]);
-
-            if ($response->successful()) {
-                $result = $response->json();
-                Log::info("✅ Supabase Update Successful", [
-                    'table' => $table,
-                    'updated_records' => count($result)
-                ]);
-                return $result;
-            }
-
-            throw new \Exception("HTTP {$response->status()}: {$response->body()}");
-
-        } catch (\Exception $e) {
-            Log::error('💥 Supabase Update Error', [
-                'table' => $table,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
+{
+    try {
+        $url = "{$this->url}/rest/v1/{$table}";
+        
+        // Build query string manually
+        $queryParts = [];
+        foreach ($filters as $key => $value) {
+            $queryParts[] = urlencode($key) . '=eq.' . urlencode($value);
         }
+        
+        if (!empty($queryParts)) {
+            $url .= '?' . implode('&', $queryParts);
+        }
+
+        Log::info("✏️ Supabase Update", [
+            'table' => $table,
+            'url' => $url,
+            'data' => $data
+        ]);
+
+        $response = Http::withHeaders([
+            'apikey' => $this->key,
+            'Authorization' => 'Bearer ' . $this->key,
+            'Content-Type' => 'application/json',
+            'Prefer' => 'return=representation',
+        ])->timeout(30)->patch($url, $data);
+
+        Log::info("📡 Update Response", [
+            'status' => $response->status(),
+            'body' => $response->body()
+        ]);
+
+        if ($response->successful()) {
+            $result = $response->json();
+            Log::info("✅ Supabase Update Successful", [
+                'table' => $table,
+                'updated_records' => is_array($result) ? count($result) : 0
+            ]);
+            return $result;
+        }
+
+        throw new \Exception("HTTP {$response->status()}: {$response->body()}");
+
+    } catch (\Exception $e) {
+        Log::error('💥 Supabase Update Error', [
+            'table' => $table,
+            'error' => $e->getMessage()
+        ]);
+        throw $e;
     }
+}
 
     public function delete($table, $filters)
     {
@@ -252,5 +266,201 @@ class SupabaseService
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    // ============================================
+    // DEBUG HELPERS
+    // ============================================
+
+    /**
+     * Check if a user exists in Supabase
+     */
+    public function userExists(string $email): bool
+    {
+        try {
+            $result = $this->select('users', 'email', ['email' => $email]);
+            return !empty($result);
+        } catch (\Exception $e) {
+            Log::error("Error checking if user exists: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get detailed user info for debugging
+     */
+    public function debugUser(string $email): array
+    {
+        try {
+            $result = $this->select('users', '*', ['email' => $email]);
+            
+            if (empty($result)) {
+                return [
+                    'exists' => false,
+                    'message' => 'User not found in database',
+                    'email' => $email
+                ];
+            }
+
+            return [
+                'exists' => true,
+                'user_data' => $result[0],
+                'columns' => array_keys($result[0]),
+                'show_nsfw_value' => $result[0]['show_nsfw'] ?? 'column not found'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'exists' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ];
+        }
+    }
+
+    /**
+     * Test update operation with detailed logging
+     */
+    public function debugUpdate(string $table, array $where, array $data): array
+    {
+        Log::info("🔧 Debug Update Starting", [
+            'table' => $table,
+            'where' => $where,
+            'data' => $data
+        ]);
+
+        try {
+            // Step 1: Check if record exists
+            $existing = $this->select($table, '*', $where);
+            
+            if (empty($existing)) {
+                return [
+                    'success' => false,
+                    'step' => 'check_exists',
+                    'message' => 'Record not found with given filters',
+                    'where' => $where
+                ];
+            }
+
+            Log::info("✓ Step 1: Record found", [
+                'record' => $existing[0]
+            ]);
+
+            // Step 2: Attempt update
+            $result = $this->update($table, $where, $data);
+
+            Log::info("✓ Step 2: Update executed", [
+                'result' => $result,
+                'result_type' => gettype($result),
+                'is_array' => is_array($result),
+                'count' => is_array($result) ? count($result) : 0
+            ]);
+
+            // Step 3: Verify update
+            $updated = $this->select($table, '*', $where);
+            
+            Log::info("✓ Step 3: Verification complete", [
+                'updated_record' => $updated[0] ?? null
+            ]);
+
+            return [
+                'success' => true,
+                'before' => $existing[0],
+                'after' => $updated[0] ?? null,
+                'changes' => $this->getChanges($existing[0], $updated[0] ?? []),
+                'update_result' => $result
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("❌ Debug update error", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ];
+        }
+    }
+
+    /**
+     * Compare before/after to show what changed
+     */
+    private function getChanges(array $before, array $after): array
+    {
+        $changes = [];
+        foreach ($before as $key => $beforeValue) {
+            $afterValue = $after[$key] ?? null;
+            if ($beforeValue !== $afterValue) {
+                $changes[$key] = [
+                    'before' => $beforeValue,
+                    'after' => $afterValue
+                ];
+            }
+        }
+        return $changes;
+    }
+
+    /**
+     * Quick test to verify settings update works
+     */
+    public function testSettingsUpdate(string $email): array
+    {
+        echo "\n=== Testing Supabase Settings Update ===\n\n";
+        
+        // Test 1: Connection
+        echo "1. Testing connection...\n";
+        $connection = $this->testConnection();
+        echo "   Result: " . ($connection['success'] ? '✓ Success' : '✗ Failed') . "\n";
+        if (!$connection['success']) {
+            echo "   Error: " . $connection['error'] . "\n";
+            return $connection;
+        }
+        
+        // Test 2: User exists
+        echo "\n2. Checking if user exists...\n";
+        $userInfo = $this->debugUser($email);
+        echo "   User exists: " . ($userInfo['exists'] ? '✓ Yes' : '✗ No') . "\n";
+        
+        if ($userInfo['exists']) {
+            echo "   Available columns: " . implode(', ', $userInfo['columns']) . "\n";
+            echo "   Current show_nsfw: " . json_encode($userInfo['show_nsfw_value']) . "\n";
+        } else {
+            echo "   Error: " . ($userInfo['error'] ?? 'User not found') . "\n";
+            return $userInfo;
+        }
+        
+        // Test 3: Update operation
+        echo "\n3. Testing update operation...\n";
+        $currentValue = $userInfo['user_data']['show_nsfw'] ?? false;
+        $newValue = !$currentValue; // Toggle it
+        
+        echo "   Changing show_nsfw from " . json_encode($currentValue) . " to " . json_encode($newValue) . "\n";
+        
+        $updateTest = $this->debugUpdate(
+            'users',
+            ['email' => $email],
+            ['show_nsfw' => $newValue]
+        );
+        
+        if ($updateTest['success']) {
+            echo "   Update: ✓ Success\n";
+            if (!empty($updateTest['changes'])) {
+                echo "   Changes made:\n";
+                foreach ($updateTest['changes'] as $field => $change) {
+                    echo "     - {$field}: " . json_encode($change['before']) . " → " . json_encode($change['after']) . "\n";
+                }
+            } else {
+                echo "   Warning: No changes detected (value might already be {$newValue})\n";
+            }
+        } else {
+            echo "   Update: ✗ Failed\n";
+            echo "   Error: " . ($updateTest['error'] ?? 'Unknown error') . "\n";
+        }
+        
+        echo "\n=== Test Complete ===\n\n";
+        
+        return $updateTest;
     }
 }

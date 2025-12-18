@@ -27,59 +27,72 @@ class AuthController extends Controller
         return view('auth.register');
     }
 
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required'
-        ]);
+   public function login(Request $request)
+{
+    $credentials = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required'
+    ]);
 
-        try {
-            // Find user in Supabase
-            $supabaseUsers = $this->supabase->select('users', '*', ['email' => $credentials['email']]);
-            
-            if (empty($supabaseUsers)) {
-                return back()->withErrors([
-                    'email' => 'No account found with this email.',
-                ])->withInput();
-            }
-
-            $supabaseUser = $supabaseUsers[0];
-
-            // Check password
-            if (Hash::check($credentials['password'], $supabaseUser['password'])) {
-                // Create or update local user
-                $user = \App\Models\User::updateOrCreate(
-                    ['email' => $credentials['email']],
-                    [
-                        'name' => $supabaseUser['first_name'] . ' ' . $supabaseUser['last_name'],
-                        'password' => $supabaseUser['password'],
-                        'supabase_id' => $supabaseUser['id']
-                    ]
-                );
-
-                Auth::login($user);
-
-                $request->session()->regenerate();
-
-                // Redirect based on role
-                if (isset($supabaseUser['role']) && $supabaseUser['role'] === 'admin') {
-                    return redirect()->route('admin.dashboard');
-                }
-
-                return redirect()->route('dashboard');
-            }
-
+    try {
+        // Find user in Supabase
+        $supabaseUsers = $this->supabase->select('users', '*', ['email' => $credentials['email']]);
+        
+        if (empty($supabaseUsers)) {
             return back()->withErrors([
-                'password' => 'Invalid password.',
-            ])->withInput();
-
-        } catch (\Exception $e) {
-            return back()->withErrors([
-                'email' => 'Login service temporarily unavailable.',
+                'email' => 'No account found with this email.',
             ])->withInput();
         }
+
+        $supabaseUser = $supabaseUsers[0];
+
+        // Check password
+        if (Hash::check($credentials['password'], $supabaseUser['password'])) {
+            // Handle null names safely
+            $firstName = $supabaseUser['first_name'] ?? '';
+            $lastName = $supabaseUser['last_name'] ?? '';
+            $fullName = trim($firstName . ' ' . $lastName);
+            
+            // If both names are empty, use email as name
+            if (empty($fullName)) {
+                $fullName = explode('@', $credentials['email'])[0];
+            }
+            
+            // Create or update local user
+            $user = \App\Models\User::updateOrCreate(
+                ['email' => $credentials['email']],
+                [
+                    'name' => $fullName,
+                    'password' => $supabaseUser['password'],
+                    'supabase_id' => $supabaseUser['id'],
+                    'role' => $supabaseUser['role'] ?? 'user'
+                ]
+            );
+
+            Auth::login($user);
+            $request->session()->regenerate();
+
+            // Redirect based on role
+            if (isset($supabaseUser['role']) && $supabaseUser['role'] === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
+            return redirect()->route('dashboard');
+        }
+
+        return back()->withErrors([
+            'password' => 'Invalid password.',
+        ])->withInput();
+
+    } catch (\Exception $e) {
+        \Log::error("Login error: " . $e->getMessage());
+        \Log::error("Stack trace: " . $e->getTraceAsString());
+        
+        return back()->withErrors([
+            'email' => 'Login service temporarily unavailable.',
+        ])->withInput();
     }
+}
 
     public function register(Request $request)
     {
@@ -189,12 +202,31 @@ class AuthController extends Controller
     }
 
     public function logout(Request $request)
-    {
-        Auth::logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect('/');
-    }
+{
+    // Log the logout
+    \Log::info('User logging out', [
+        'user_id' => Auth::id(),
+        'user_email' => Auth::user()->email ?? 'Unknown'
+    ]);
+    
+    // Clear authentication
+    Auth::logout();
+    
+    // Clear all session data
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    
+    // Clear any cached session data
+    $request->session()->flush();
+    
+    // Redirect with no-cache headers
+    $response = redirect('/')->with('message', 'You have been logged out successfully.');
+    
+    // Add cache prevention headers
+    $response->headers->set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
+    $response->headers->set('Pragma', 'no-cache');
+    $response->headers->set('Expires', 'Fri, 01 Jan 1990 00:00:00 GMT');
+    
+    return $response;
+}
 }

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\UserSettings;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BrowseController extends Controller
 {
@@ -17,29 +19,67 @@ class BrowseController extends Controller
     public function index()
     {
         try {
-            $allStories = $this->supabase->select('stories', '*', []);
-            $popularGenres = ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action', 'Drama', 'Adventure', 'Historical'];
-
-            if (!empty($allStories)) {
-                $allStories = array_map([$this, 'formatStory'], $allStories);
+            $user = Auth::user();
+            $userSettings = [];
+            
+            // Get user settings if logged in
+            if ($user) {
+                $settings = new UserSettings($this->supabase, $user->email);
+                $userSettings = $settings->all();
             } else {
-                $allStories = [];
+                // Guest users can't see NSFW content
+                $userSettings['show_nsfw'] = false;
+            }
+            
+            // Get all stories
+            $allStories = $this->supabase->select('stories', '*', []);
+            $popularGenres = [
+                'Fantasy', 'Romance', 'Mystery', 'Horror', 
+                'Thriller', 'Sci-Fi', 'Comedy', 'Action', 
+                'Drama', 'Adventure', 'Historical'
+            ];
+
+            // Filter stories based on NSFW preference
+            $filteredStories = [];
+            if (!empty($allStories)) {
+                foreach ($allStories as $story) {
+                    $formattedStory = $this->formatStory($story);
+                    
+                    // Skip NSFW stories if user doesn't want to see them
+                    if (($story['is_nsfw'] ?? false) && !($userSettings['show_nsfw'] ?? false)) {
+                        continue;
+                    }
+                    
+                    $filteredStories[] = $formattedStory;
+                }
             }
 
-            return view('browse', compact('allStories', 'popularGenres'));
+            return view('browse', [
+                'allStories' => $filteredStories, 
+                'popularGenres' => $popularGenres,
+                'user_settings' => $userSettings
+            ]);
 
         } catch (\Exception $e) {
-            \Log::error("Error in browse page: " . $e->getMessage());
+            \Log::error("Error in browse page: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return view('browse', [
                 'allStories' => [],
-                'popularGenres' => ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action', 'Drama', 'Adventure', 'Historical']
+                'popularGenres' => [
+                    'Fantasy', 'Romance', 'Mystery', 'Horror', 
+                    'Thriller', 'Sci-Fi', 'Comedy', 'Action', 
+                    'Drama', 'Adventure', 'Historical'
+                ],
+                'user_settings' => ['show_nsfw' => false]
             ]);
         }
     }
 
     private function formatStory($story)
     {
+        // Parse genre
         $genre = [];
         if (isset($story['genre'])) {
             if (is_string($story['genre'])) {
@@ -53,6 +93,7 @@ class BrowseController extends Controller
             }
         }
         
+        // Parse chapters
         $chapters = [];
         if (isset($story['chapters'])) {
             if (is_string($story['chapters'])) {
@@ -76,7 +117,8 @@ class BrowseController extends Controller
             'reads' => $story['reads'] ?? 0,
             'rating' => $story['rating'] ?? 0,
             'description' => $story['description'] ?? 'An engaging story waiting to be discovered.',
-            'created_at' => $story['created_at'] ?? now()->toISOString()
+            'created_at' => $story['created_at'] ?? now()->toISOString(),
+            'is_nsfw' => $story['is_nsfw'] ?? false
         ];
     }
 

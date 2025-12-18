@@ -581,42 +581,91 @@
     }
 
     function saveProfile() {
-      const formData = {
-        first_name: document.getElementById('editFirstName').value,
-        last_name: document.getElementById('editLastName').value,
-        email: document.getElementById('editEmail').value,
-        bio: document.getElementById('editBio').value,
-        _token: '{{ csrf_token() }}'
-      };
+  const formData = {
+    first_name: document.getElementById('editFirstName').value,
+    last_name: document.getElementById('editLastName').value,
+    email: document.getElementById('editEmail').value,
+    bio: document.getElementById('editBio').value,
+    _token: '{{ csrf_token() }}'
+  };
 
-      fetch('{{ route("profile.update") }}', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          // Update profile display
-          document.getElementById('profileName').textContent = `${formData.first_name} ${formData.last_name}`;
-          document.getElementById('profileBio').textContent = formData.bio;
-          document.getElementById('userInitial').textContent = formData.first_name.charAt(0).toUpperCase();
-          
-          // Close modal
-          bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide();
-          
-          showSuccess('Profile updated successfully');
-        } else {
-          showError(result.error || 'Failed to update profile');
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        showError('Failed to update profile');
-      });
+  // Show loading state
+  const saveButton = document.querySelector('#editProfileModal .btn-main');
+  const originalText = saveButton.innerHTML;
+  saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+  saveButton.disabled = true;
+
+  fetch('{{ route("profile.update") }}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(formData)
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
     }
+    return response.json();
+  })
+  .then(result => {
+    if (result.success) {
+      // Update profile display
+      document.getElementById('profileName').textContent = `${formData.first_name} ${formData.last_name}`;
+      document.getElementById('profileBio').textContent = formData.bio;
+      document.getElementById('userInitial').textContent = formData.first_name.charAt(0).toUpperCase();
+      
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
+      modal.hide();
+      
+      // Show success message
+      showNotification('Profile updated successfully!', 'success');
+    } else {
+      showNotification(result.error || 'Failed to update profile', 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showNotification('Failed to update profile. Please try again.', 'error');
+  })
+  .finally(() => {
+    // Restore button state
+    saveButton.innerHTML = originalText;
+    saveButton.disabled = false;
+  });
+}
+
+// Add notification function
+function showNotification(message, type = 'success') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+  notification.style.cssText = `
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  `;
+  
+  notification.innerHTML = `
+    <strong>${type === 'success' ? 'Success!' : 'Error!'}</strong> ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  // Add to body
+  document.body.appendChild(notification);
+  
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 5000);
+}
 
     function showSuccess(message) {
       alert('Success: ' + message); // Replace with toast notification

@@ -1,138 +1,390 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Stories - Storyline</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ asset('css/styles.css') }}" />
+  <style>
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
 
-@section('title', 'My Stories - Storyline')
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
 
-@section('content')
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h1><i class="fas fa-book me-2"></i>My Stories</h1>
-                    <p>Manage and view all your published stories</p>
-                </div>
-                <div class="col-lg-6">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="stats-card">
-                                <div class="stats-number" id="totalStories">0</div>
-                                <div class="stats-label">Total Stories</div>
-                            </div>
+    .page-header p {
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+
+    /* Stats Cards */
+    .stats-card {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Filter Section */
+    .filter-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .filter-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+    }
+
+    .filter-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .filter-tag {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 50px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filter-tag:hover {
+        border-color: #667eea;
+        color: #667eea;
+    }
+
+    .filter-tag.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    /* Story Cards */
+    .story-card {
+        border: none;
+        border-radius: 15px;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .story-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .story-img {
+        height: 200px;
+        object-fit: cover;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .card-title {
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .chapter-preview {
+        background: #f8f9fa;
+        border-radius: 5px;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 1rem;
+    }
+
+    .story-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+        color: #888;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-main {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border-radius: 5px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-main:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: #f8f9fa;
+        border-radius: 15px;
+        margin: 2rem 0;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #667eea;
+        margin-bottom: 1.5rem;
+        opacity: 0.7;
+    }
+
+    /* Loading State */
+    #loadingState {
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Toast notifications */
+    .toast-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="{{ route('home') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-book me-2"
+          viewBox="0 0 16 16">
+          <path
+            d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z" />
+        </svg>
+        Storyline
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+        aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}"><i class="fas fa-th-large me-1"></i>Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ route('write') }}"><i class="fas fa-pen me-1"></i>Write</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ route('browse') }}"><i class="fas fa-compass me-1"></i>Browse</a></li>
+          <li class="nav-item"><a class="nav-link active" href="{{ route('mystories') }}"><i class="fas fa-book me-1"></i>My Stories</a></li>
+          
+          <!-- User dropdown -->
+          <li class="nav-item dropdown ms-2">
+            <a class="nav-link p-0" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
+                <span id="userInitial">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</span>
+              </div>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="fas fa-user me-2"></i>My Profile</a></li>
+              <li><a class="dropdown-item" href="{{ route('mystories') }}"><i class="fas fa-book me-2"></i>My Stories</a></li>
+              <li><a class="dropdown-item" href="{{ route('settings') }}"><i class="fas fa-cog me-2"></i>Settings</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                  @csrf
+                  <button type="submit" class="dropdown-item border-0 bg-transparent">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                  </button>
+                </form>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1><i class="fas fa-book me-2"></i>My Stories</h1>
+                <p>Manage and view all your published stories</p>
+            </div>
+            <div class="col-lg-6">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="totalStories">0</div>
+                            <div class="stats-label">Total Stories</div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="stats-card">
-                                <div class="stats-number" id="totalChapters">0</div>
-                                <div class="stats-label">Total Chapters</div>
-                            </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="totalChapters">0</div>
+                            <div class="stats-label">Total Chapters</div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="stats-card">
-                                <div class="stats-number" id="totalReads">0</div>
-                                <div class="stats-label">Total Reads</div>
-                            </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="totalReads">0</div>
+                            <div class="stats-label">Total Reads</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+  </div>
 
-    <!-- Page Content -->
-    <div class="container mb-5">
-        <!-- Filter Section -->
-        <div class="filter-section">
-            <h5 class="filter-title"><i class="fas fa-filter me-2"></i>Filter by Genre</h5>
-            <div class="filter-tags">
-                <span class="filter-tag active" data-genre="all">All</span>
-                <span class="filter-tag" data-genre="Fantasy">Fantasy</span>
-                <span class="filter-tag" data-genre="Thriller">Thriller</span>
-                <span class="filter-tag" data-genre="Horror">Horror</span>
-                <span class="filter-tag" data-genre="Mystery">Mystery</span>
-                <span class="filter-tag" data-genre="Action">Action</span>
-                <span class="filter-tag" data-genre="Sci-Fi">Sci-Fi</span>
-                <span class="filter-tag" data-genre="Romance">Romance</span>
-                <span class="filter-tag" data-genre="Comedy">Comedy</span>
-                <span class="filter-tag" data-genre="Drama">Drama</span>
-                <span class="filter-tag" data-genre="Adventure">Adventure</span>
-                <span class="filter-tag" data-genre="Historical">Historical</span>
-            </div>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loadingState" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3">Loading your stories...</p>
-        </div>
-
-        <!-- Stories Grid -->
-        <div class="row" id="storiesContainer" style="display: none;">
-            <!-- Story cards will be injected here -->
-        </div>
-        
-        <!-- Empty State -->
-        <div id="noStories" class="empty-state d-none">
-            <i class="fas fa-book-open"></i>
-            <h4>No stories yet</h4>
-            <p>You haven't published any stories. Start your writing journey today!</p>
-            <a href="{{ route('write') }}" class="btn btn-main">Write Your First Story</a>
+  <!-- Page Content -->
+  <div class="container mb-5">
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <h5 class="filter-title"><i class="fas fa-filter me-2"></i>Filter by Genre</h5>
+        <div class="filter-tags">
+            <span class="filter-tag active" data-genre="all">All</span>
+            <span class="filter-tag" data-genre="Fantasy">Fantasy</span>
+            <span class="filter-tag" data-genre="Thriller">Thriller</span>
+            <span class="filter-tag" data-genre="Horror">Horror</span>
+            <span class="filter-tag" data-genre="Mystery">Mystery</span>
+            <span class="filter-tag" data-genre="Action">Action</span>
+            <span class="filter-tag" data-genre="Sci-Fi">Sci-Fi</span>
+            <span class="filter-tag" data-genre="Romance">Romance</span>
+            <span class="filter-tag" data-genre="Comedy">Comedy</span>
+            <span class="filter-tag" data-genre="Drama">Drama</span>
+            <span class="filter-tag" data-genre="Adventure">Adventure</span>
+            <span class="filter-tag" data-genre="Historical">Historical</span>
         </div>
     </div>
-@endsection
 
-@push('scripts')
-<script>
+    <!-- Loading State -->
+    <div id="loadingState" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Loading your stories...</p>
+    </div>
+
+    <!-- Stories Grid -->
+    <div class="row" id="storiesContainer" style="display: none;">
+        <!-- Story cards will be injected here -->
+    </div>
+    
+    <!-- Empty State -->
+    <div id="noStories" class="empty-state d-none">
+        <i class="fas fa-book-open"></i>
+        <h4>No stories yet</h4>
+        <p>You haven't published any stories. Start your writing journey today!</p>
+        <a href="{{ route('write') }}" class="btn btn-main">Write Your First Story</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white py-4">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-6">
+          <a class="navbar-brand text-white mb-3 d-inline-block" href="{{ route('home') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-book me-2"
+              viewBox="0 0 16 16">
+              <path
+                d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z" />
+            </svg>
+            Storyline
+          </a>
+          <p class="text-white-50">
+            Where stories come alive. Discover new tales, write your own, and connect with readers everywhere.
+          </p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="text-white-50 mb-1">&copy; 2025 Storyline. All rights reserved.</p>
+          <p class="mb-0">Made with <i class="fas fa-heart text-danger"></i> for storytellers</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
     document.addEventListener("DOMContentLoaded", function () {
+        console.log('DOM loaded, starting My Stories page...');
+
         // DOM Elements
         const storiesContainer = document.getElementById('storiesContainer');
         const noStories = document.getElementById('noStories');
         const loadingState = document.getElementById('loadingState');
         const filterTags = document.querySelectorAll('.filter-tag');
+        
+        // State
         let currentFilter = 'all';
         let allStories = [];
 
-        console.log('DOM loaded, starting script...');
-
-        // Show success message
-        function showSuccess(message) {
+        // Show toast notification
+        function showToast(message, type = 'success') {
             const toast = document.createElement('div');
-            toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+            toast.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
             toast.style.zIndex = '9999';
             toast.innerHTML = `
-                <i class="fas fa-check-circle me-2"></i>
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
                 ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             document.body.appendChild(toast);
             
             setTimeout(() => {
-                document.body.removeChild(toast);
-            }, 3000);
-        }
-
-        // Show error message
-        function showError(message) {
-            console.error('Showing error:', message);
-            const toast = document.createElement('div');
-            toast.className = 'alert alert-danger position-fixed top-0 end-0 m-3';
-            toast.style.zIndex = '9999';
-            toast.innerHTML = `
-                <i class="fas fa-exclamation-circle me-2"></i>
-                ${message}
-            `;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                document.body.removeChild(toast);
+                if (toast.parentNode) {
+                    toast.remove();
+                }
             }, 5000);
         }
 
-        // Load stories from Supabase
+        // Load stories from API
         async function loadStoriesFromSupabase() {
             try {
-                console.log('Fetching stories from {{ route('get-my-stories') }}...');
+                console.log('Fetching stories from API...');
                 
-                const response = await fetch('{{ route('get-my-stories') }}', {
+                const response = await fetch('{{ route("get-my-stories") }}', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -141,20 +393,31 @@
                 });
 
                 console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
                 console.log('API Response:', result);
                 
                 if (result.success) {
                     allStories = result.data || [];
-                    console.log('Stories loaded successfully:', allStories.length, 'stories');
-                    console.log('Stories data:', allStories);
+                    console.log(`Loaded ${allStories.length} stories:`, allStories);
+                    
+                    if (allStories.length === 0) {
+                        showToast('No stories found. Start writing your first story!', 'info');
+                    } else {
+                        showToast(`Loaded ${allStories.length} stories`, 'success');
+                    }
+                    
                     renderStories();
                 } else {
                     throw new Error(result.error || 'Failed to load stories');
                 }
             } catch (error) {
                 console.error('Error loading stories:', error);
-                showError('Failed to load stories. Please try again.');
+                showToast('Failed to load stories. Please try again.', 'error');
             } finally {
                 loadingState.style.display = 'none';
                 console.log('Loading state hidden');
@@ -193,7 +456,7 @@
                         <i class="fas fa-search"></i>
                         <h4>No stories found</h4>
                         <p>You don't have any stories in the ${currentFilter} genre.</p>
-                        <a href="{{ route('write') }}" class="btn btn-primary">Write a New Story</a>
+                        <a href="{{ route('write') }}" class="btn btn-main">Write a New Story</a>
                     `;
                     noStories.classList.remove('d-none');
                     storiesContainer.style.display = 'none';
@@ -213,21 +476,29 @@
                 col.classList.add('col-xl-4', 'col-lg-6', 'mb-4');
                 
                 const totalReads = story.reads || 0;
-                const rating = story.rating || 0;
                 const chapterCount = story.chapter_count || 0;
                 const firstChapterTitle = story.first_chapter_title || 'No chapters yet';
+                
+                // Handle genres - could be array or string
+                let genres = [];
+                if (Array.isArray(story.genre)) {
+                    genres = story.genre;
+                } else if (story.genre) {
+                    genres = [story.genre];
+                }
                 
                 col.innerHTML = `
                     <div class="card story-card h-100">
                         <img src="${story.cover_image || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'}" 
-                             class="card-img-top story-img" alt="${story.title}" style="height: 200px; object-fit: cover;">
+                             class="card-img-top story-img" alt="${story.title || 'Story'}" 
+                             onerror="this.src='https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'">
                         <div class="card-body">
                             <h5 class="card-title">${story.title || 'Untitled'}</h5>
-                            <p class="card-text">by ${story.author || 'Unknown Author'}</p>
+                            <p class="card-text text-muted">by ${story.author || 'Unknown Author'}</p>
                             
-                            <!-- Simple genre display -->
+                            <!-- Genre display -->
                             <div class="mb-2">
-                                <span class="badge bg-primary">${Array.isArray(story.genre) ? story.genre[0] : (story.genre || 'Unknown')}</span>
+                                ${genres.map(genre => `<span class="badge bg-primary me-1 mb-1">${genre}</span>`).join('')}
                             </div>
                             
                             <div class="chapter-preview mb-2">
@@ -253,7 +524,6 @@
                     </div>
                 `;
                 storiesContainer.appendChild(col);
-                console.log(`Card ${index} created and appended`);
             });
             
             console.log('All cards created');
@@ -272,24 +542,26 @@
             console.log('Stats updated:', { totalStories, totalChapters, totalReads });
         }
 
-        // Make functions globally available
+        // Story view function
         window.viewStory = function(storyId) {
             console.log('View story:', storyId);
-            window.location.href = `/stories?id=${storyId}`;
+            window.location.href = `/stories/${storyId}`;
         };
 
+        // Story edit function
         window.editStory = function(storyId) {
             console.log('Edit story:', storyId);
-            window.location.href = `{{ route('write') }}?id=${storyId}`;
+            window.location.href = `/write/${storyId}`;
         };
 
+        // Story delete function
         window.deleteStory = async function(storyId) {
             console.log('Delete story:', storyId);
             if (confirm('Are you sure you want to delete this story? This action cannot be undone.')) {
                 try {
                     console.log('Sending delete request for story:', storyId);
                     
-                    const response = await fetch('{{ route('delete-story') }}', {
+                    const response = await fetch('{{ route("delete-story") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -307,14 +579,14 @@
                         // Remove from local array and re-render
                         allStories = allStories.filter(story => story.id != storyId);
                         renderStories();
-                        showSuccess('Story deleted successfully');
+                        showToast('Story deleted successfully');
                         console.log('Story deleted successfully:', storyId);
                     } else {
                         throw new Error(result.error || 'Failed to delete story');
                     }
                 } catch (error) {
                     console.error('Error deleting story:', error);
-                    showError('Failed to delete story: ' + error.message);
+                    showToast('Failed to delete story: ' + error.message);
                 }
             }
         };
@@ -334,5 +606,6 @@
         console.log('Starting initial load...');
         loadStoriesFromSupabase();
     });
-</script>
-@endpush
+  </script>
+</body>
+</html>

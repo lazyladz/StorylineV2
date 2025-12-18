@@ -125,60 +125,134 @@ class ProfileController extends Controller
     }
 
     public function update(Request $request)
-    {
-        $validator = \Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'bio' => 'nullable|string|max:500',
+{
+    \Log::info('Profile update started', ['user_id' => Auth::id(), 'data' => $request->all()]);
+
+    $validator = \Validator::make($request->all(), [
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'email' => 'required|email',
+        'bio' => 'nullable|string|max:500',
+    ]);
+
+    if ($validator->fails()) {
+        \Log::error('Profile validation failed', ['errors' => $validator->errors()->toArray()]);
+        return response()->json([
+            'success' => false,
+            'error' => $validator->errors()->first()
+        ]);
+    }
+
+    try {
+        $user = Auth::user();
+        
+        // Check if user has supabase_id
+        if (empty($user->supabase_id)) {
+            \Log::error('User has no supabase_id', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'user_data' => $user->toArray()
+            ]);
+            
+            // Try to find user in Supabase by email
+            try {
+                $supabaseUsers = $this->supabase->select('users', '*', ['email' => $user->email]);
+                if (!empty($supabaseUsers)) {
+                    $supabaseUser = $supabaseUsers[0];
+                    $user->supabase_id = $supabaseUser['id'];
+                    $user->save();
+                    \Log::info('Fixed missing supabase_id', [
+                        'user_id' => $user->id,
+                        'new_supabase_id' => $supabaseUser['id']
+                    ]);
+                } else {
+                    throw new \Exception('User not found in Supabase');
+                }
+            } catch (\Exception $e) {
+                \Log::error('Could not fix supabase_id: ' . $e->getMessage());
+                throw new \Exception('User account not properly synchronized with Supabase');
+            }
+        }
+        
+        \Log::info('Updating profile for user', [
+            'user_id' => $user->id, 
+            'supabase_id' => $user->supabase_id,
+            'email' => $user->email
+        ]);
+        
+        // Update user in Supabase
+        $updateData = [
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+            'bio' => $request->bio ?? '',
+            'updated_at' => now()->toISOString()
+        ];
+
+        \Log::info('Attempting Supabase update', [
+            'table' => 'users',
+            'filters' => ['id' => $user->supabase_id],
+            'data' => $updateData
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'error' => $validator->errors()->first()
-            ]);
-        }
+        // Try the update
+        $result = $this->supabase->update('users', ['id' => $user->supabase_id], $updateData);
+        
+        \Log::info('Supabase update result', [
+            'result' => $result,
+            'result_type' => gettype($result),
+            'is_array' => is_array($result),
+            'is_bool' => is_bool($result)
+        ]);
 
-        try {
-            $user = Auth::user();
+        // Check result - it could be an array or boolean
+        if ($result === false || $result === null || (is_array($result) && empty($result))) {
+            \Log::warning('Supabase update may have failed, checking if update actually happened');
             
-            // Update user in Supabase
-            $updateData = [
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
-                'email' => $request->email,
-                'bio' => $request->bio,
-                'updated_at' => now()->toISOString()
-            ];
-
-            // Update profile image if provided
-            if ($request->has('profile_image')) {
-                $updateData['profile_image'] = $request->profile_image;
+            // Verify the update by fetching the user
+            $updatedUser = $this->supabase->select('users', '*', ['id' => $user->supabase_id]);
+            
+            if (!empty($updatedUser)) {
+                $currentData = $updatedUser[0];
+                \Log::info('Current user data after update attempt', $currentData);
+                
+                // Check if data matches what we tried to update
+                if ($currentData['first_name'] === $updateData['first_name'] && 
+                    $currentData['last_name'] === $updateData['last_name']) {
+                    \Log::info('Update appears to have succeeded based on data verification');
+                    $result = true; // Mark as success
+                }
             }
-
-            $this->supabase->update('users', ['id' => $user->supabase_id], $updateData);
-
-            // Update local user
-            $user->update([
-                'name' => $request->first_name . ' ' . $request->last_name,
-                'email' => $request->email
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile updated successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error("Error updating profile: " . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to update profile. Please try again.'
-            ]);
         }
+
+        if (!$result) {
+            throw new \Exception('Supabase update failed. Check logs for details.');
+        }
+
+        // Update local user
+        $user->update([
+            'name' => $request->first_name . ' ' . $request->last_name,
+            'email' => $request->email
+        ]);
+
+        \Log::info('Profile updated successfully');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error("Error updating profile: " . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to update profile. Please try again.'
+        ]);
     }
+}
 
     // Helper methods for the view
     public function getGenreColor($genre)

@@ -15,6 +15,7 @@ class User extends Authenticatable
         'email',
         'password',
         'supabase_id',
+        'role', // ← ADD THIS LINE
     ];
 
     protected $hidden = [
@@ -28,5 +29,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // Optional: Add a helper method to check if user is admin
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
     }
 }
