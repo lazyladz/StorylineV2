@@ -17,77 +17,93 @@ class DashboardController extends Controller
     }
 
     public function index()
-    {
-        try {
-            $user = Auth::user();
-            
-            // Get user settings using UserSettings model
-            $settingsModel = new UserSettings($this->supabase, $user->email);
-            $showNsfw = $settingsModel->get('show_nsfw', false);
-            
-            \Log::info('Dashboard loading', [
-                'user_email' => $user->email,
-                'show_nsfw_setting' => $showNsfw,
-                'all_settings' => $settingsModel->all()
-            ]);
-            
-            \Log::info('Dashboard loading for user', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'show_nsfw' => $showNsfw
-            ]);
-
-            // Get user's stories using the SUPABASE ID
-            $userStories = $this->supabase->select('stories', '*', ['user_id' => $user->supabase_id]);
-
-            // Get all stories
-            $allStories = $this->supabase->select('stories', '*', []);
-            
-            \Log::info('Stories before filtering', [
-                'total_stories' => is_array($allStories) ? count($allStories) : 0,
-                'nsfw_count' => is_array($allStories) ? count(array_filter($allStories, function($s) { return $s['is_nsfw'] ?? false; })) : 0
-            ]);
-
-            // Get reading progress
-            $continueStories = $this->getReadingProgress($user);
-
-            // Filter NSFW stories based on user preference
-            $allStories = $this->filterNsfwStories($allStories, $showNsfw);
-            $continueStories = $this->filterNsfwStories($continueStories, $showNsfw);
-            
-            \Log::info('Stories after filtering', [
-                'show_nsfw' => $showNsfw,
-                'filtered_count' => is_array($allStories) ? count($allStories) : 0
-            ]);
-            // Don't filter user's own stories
-
-            // Format stories
-            $userStories = is_array($userStories) ? array_map([$this, 'formatStory'], $userStories) : [];
-            $allStories = is_array($allStories) ? array_map([$this, 'formatStory'], $allStories) : [];
-            $continueStories = is_array($continueStories) ? array_map([$this, 'formatStory'], $continueStories) : [];
-
-            $popularGenres = ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action'];
-
-            return view('dashboard.index', compact(
-                'userStories', 
-                'allStories', 
-                'continueStories', 
-                'popularGenres',
-                'showNsfw'  // ← ADD THIS!
-            ));
-
-        } catch (\Exception $e) {
-            \Log::error("Dashboard error: " . $e->getMessage());
-            \Log::error("Dashboard stack trace: " . $e->getTraceAsString());
-            
-            return view('dashboard.index', [
-                'userStories' => [],
-                'allStories' => [],
-                'continueStories' => [],
-                'popularGenres' => ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action']
-            ]);
+{
+    try {
+        $user = Auth::user();
+        
+        // Get user data from Supabase to fetch profile image
+        $profileImage = 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=667eea&color=fff';
+        
+        if (!empty($user->supabase_id)) {
+            $supabaseUsers = $this->supabase->select('users', '*', ['id' => $user->supabase_id]);
+            if (!empty($supabaseUsers)) {
+                $supabaseUser = $supabaseUsers[0];
+                if (!empty($supabaseUser['profile_image'])) {
+                    $profileImage = $supabaseUser['profile_image'];
+                }
+            }
         }
+        
+        // Get user settings using UserSettings model
+        $settingsModel = new UserSettings($this->supabase, $user->email);
+        $showNsfw = $settingsModel->get('show_nsfw', false);
+        
+        \Log::info('Dashboard loading', [
+            'user_email' => $user->email,
+            'show_nsfw_setting' => $showNsfw,
+            'all_settings' => $settingsModel->all()
+        ]);
+        
+        \Log::info('Dashboard loading for user', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'show_nsfw' => $showNsfw
+        ]);
+
+        // Get user's stories using the SUPABASE ID
+        $userStories = $this->supabase->select('stories', '*', ['user_id' => $user->supabase_id]);
+
+        // Get all stories
+        $allStories = $this->supabase->select('stories', '*', []);
+        
+        \Log::info('Stories before filtering', [
+            'total_stories' => is_array($allStories) ? count($allStories) : 0,
+            'nsfw_count' => is_array($allStories) ? count(array_filter($allStories, function($s) { return $s['is_nsfw'] ?? false; })) : 0
+        ]);
+
+        // Get reading progress
+        $continueStories = $this->getReadingProgress($user);
+
+        // Filter NSFW stories based on user preference
+        $allStories = $this->filterNsfwStories($allStories, $showNsfw);
+        $continueStories = $this->filterNsfwStories($continueStories, $showNsfw);
+        
+        \Log::info('Stories after filtering', [
+            'show_nsfw' => $showNsfw,
+            'filtered_count' => is_array($allStories) ? count($allStories) : 0
+        ]);
+        // Don't filter user's own stories
+
+        // Format stories
+        $userStories = is_array($userStories) ? array_map([$this, 'formatStory'], $userStories) : [];
+        $allStories = is_array($allStories) ? array_map([$this, 'formatStory'], $allStories) : [];
+        $continueStories = is_array($continueStories) ? array_map([$this, 'formatStory'], $continueStories) : [];
+
+        $popularGenres = ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action'];
+
+        return view('dashboard.index', compact(
+            'userStories', 
+            'allStories', 
+            'continueStories', 
+            'popularGenres',
+            'showNsfw',
+            'profileImage'  // ← NOW IT'S DEFINED ABOVE!
+        ));
+
+    } catch (\Exception $e) {
+        \Log::error("Dashboard error: " . $e->getMessage());
+        \Log::error("Dashboard stack trace: " . $e->getTraceAsString());
+        
+        return view('dashboard.index', [
+            'userStories' => [],
+            'allStories' => [],
+            'continueStories' => [],
+            'popularGenres' => ['Fantasy', 'Romance', 'Mystery', 'Horror', 'Thriller', 'Sci-Fi', 'Comedy', 'Action'],
+            'showNsfw' => false,
+            'profileImage' => 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff'
+        ]);
     }
+}
 
     private function filterNsfwStories($stories, $showNsfw)
     {

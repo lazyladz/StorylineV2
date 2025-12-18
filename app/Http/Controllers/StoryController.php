@@ -163,33 +163,107 @@ class StoryController extends Controller
         }
     }
 
-    // EXISTING METHODS
     public function myStories()
-    {
-        return view('mystories');
+{
+    try {
+        $user = Auth::user();
+        
+        // Get profile image
+        $profileImage = 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=667eea&color=fff';
+        
+        if (!empty($user->supabase_id)) {
+            $supabaseUsers = $this->supabase->select('users', '*', ['id' => $user->supabase_id]);
+            if (!empty($supabaseUsers)) {
+                $supabaseUser = $supabaseUsers[0];
+                if (!empty($supabaseUser['profile_image'])) {
+                    $profileImage = $supabaseUser['profile_image'];
+                }
+            }
+        }
+        
+        return view('mystories', compact('profileImage'));
+        
+    } catch (\Exception $e) {
+        \Log::error("Error in myStories: " . $e->getMessage());
+        
+        return view('mystories', [
+            'profileImage' => 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff'
+        ]);
     }
+}
 
     public function write()
-    {
+{
+    try {
+        $user = Auth::user();
+        
+        // Get profile image and user data
+        $profileImage = 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=667eea&color=fff';
+        $authorName = $user->name;
+        
+        if (!empty($user->supabase_id)) {
+            $supabaseUsers = $this->supabase->select('users', '*', ['id' => $user->supabase_id]);
+            if (!empty($supabaseUsers)) {
+                $supabaseUser = $supabaseUsers[0];
+                if (!empty($supabaseUser['profile_image'])) {
+                    $profileImage = $supabaseUser['profile_image'];
+                }
+                // Get full name from Supabase
+                if (!empty($supabaseUser['first_name']) && !empty($supabaseUser['last_name'])) {
+                    $authorName = $supabaseUser['first_name'] . ' ' . $supabaseUser['last_name'];
+                }
+            }
+        }
+        
         return view('write', [
             'isEditMode' => false,
             'existingStory' => null,
-            'storyId' => null
+            'storyId' => null,
+            'profileImage' => $profileImage,
+            'authorName' => $authorName
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error("Error in write: " . $e->getMessage());
+        
+        return view('write', [
+            'isEditMode' => false,
+            'existingStory' => null,
+            'storyId' => null,
+            'profileImage' => 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff',
+            'authorName' => auth()->user()->name
         ]);
     }
+}
 public function edit($id)
 {
     try {
         $user = Auth::user();
         
+        // Get profile image and user data
+        $profileImage = 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=667eea&color=fff';
+        $authorName = $user->name;
+        
         // Get Supabase user ID
-        $supabaseUsers = $this->supabase->select('users', 'id', ['email' => $user->email]);
+        $supabaseUsers = $this->supabase->select('users', '*', ['email' => $user->email]);
         
         if (empty($supabaseUsers)) {
             return redirect()->route('write')->with('error', 'User not found in Supabase.');
         }
         
-        $supabaseUserId = $supabaseUsers[0]['id'];
+        $supabaseUser = $supabaseUsers[0];
+        $supabaseUserId = $supabaseUser['id'];
+        
+        // Get profile image
+        if (!empty($supabaseUser['profile_image'])) {
+            $profileImage = $supabaseUser['profile_image'];
+        }
+        
+        // Get full name
+        if (!empty($supabaseUser['first_name']) && !empty($supabaseUser['last_name'])) {
+            $authorName = $supabaseUser['first_name'] . ' ' . $supabaseUser['last_name'];
+        }
+        
         $storyId = intval($id);
         
         $stories = $this->supabase->select('stories', '*', ['id' => $storyId, 'user_id' => $supabaseUserId]);
@@ -211,7 +285,9 @@ public function edit($id)
         return view('write', [
             'isEditMode' => true,
             'existingStory' => $existingStory,
-            'storyId' => $storyId
+            'storyId' => $storyId,
+            'profileImage' => $profileImage,
+            'authorName' => $authorName
         ]);
 
     } catch (\Exception $e) {

@@ -239,26 +239,33 @@
             <li class="nav-item"><a class="nav-link active" href="{{ route('browse') }}"><i class="fas fa-search me-1"></i>Browse</a></li>
             
             <li class="nav-item dropdown ms-2">
-              <a class="nav-link p-0" href="#" role="button" data-bs-toggle="dropdown">
-                <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
-                  <span>{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</span>
-                </div>
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="fas fa-user me-2"></i>My Profile</a></li>
-                <li><a class="dropdown-item" href="{{ route('mystories') }}"><i class="fas fa-book me-2"></i>My Stories</a></li>
-                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                  <form method="POST" action="{{ route('logout') }}" class="d-inline">
-                    @csrf
-                    <button type="submit" class="dropdown-item border-0 bg-transparent">
-                      <i class="fas fa-sign-out-alt me-2"></i>Logout
-                    </button>
-                  </form>
-                </li>
-              </ul>
-            </li>
+  <a class="nav-link p-0" href="#" role="button" data-bs-toggle="dropdown">
+    <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center" 
+         style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      @if(isset($profileImage) && !str_contains($profileImage ?? '', 'ui-avatars.com'))
+        <img src="{{ $profileImage }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+      @else
+        <span style="color: white; font-weight: bold;">
+          {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+        </span>
+      @endif
+    </div>
+  </a>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="fas fa-user me-2"></i>My Profile</a></li>
+    <li><a class="dropdown-item" href="{{ route('mystories') }}"><i class="fas fa-book me-2"></i>My Stories</a></li>
+    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog me-2"></i>Settings</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <form method="POST" action="{{ route('logout') }}" class="d-inline">
+        @csrf
+        <button type="submit" class="dropdown-item border-0 bg-transparent">
+          <i class="fas fa-sign-out-alt me-2"></i>Logout
+        </button>
+      </form>
+    </li>
+  </ul>
+</li>
           @else
             <!-- Navigation items for guests (non-logged in users) ONLY -->
             <li class="nav-item"><a class="nav-link" href="{{ route('home') }}#features">Features</a></li>

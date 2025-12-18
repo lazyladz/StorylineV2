@@ -193,43 +193,63 @@ class SupabaseService
 }
 
     public function delete($table, $filters)
-    {
-        try {
-            $url = "{$this->url}/rest/v1/{$table}";
-            
-            $queryParams = [];
-            foreach ($filters as $key => $value) {
-                $queryParams[$key] = 'eq.' . $value;
-            }
+{
+    try {
+        $url = "{$this->url}/rest/v1/{$table}";
+        
+        // Build query string manually - DELETE needs params in URL
+        $queryParts = [];
+        foreach ($filters as $key => $value) {
+            // URL encode both key and value
+            $queryParts[] = urlencode($key) . '=eq.' . urlencode($value);
+        }
+        
+        // Append query string to URL
+        if (!empty($queryParts)) {
+            $url .= '?' . implode('&', $queryParts);
+        } else {
+            throw new \Exception("DELETE requires a WHERE clause - no filters provided");
+        }
 
-            Log::info("🗑️ Supabase Delete", [
+        Log::info("🗑️ Supabase Delete", [
+            'table' => $table,
+            'filters' => $filters,
+            'final_url' => $url
+        ]);
+
+        // Send DELETE request with empty body
+        $response = Http::withHeaders([
+            'apikey' => $this->key,
+            'Authorization' => 'Bearer ' . $this->key,
+            'Content-Type' => 'application/json',
+            'Prefer' => 'return=representation'
+        ])->timeout(30)->delete($url);
+
+        Log::info("📡 Delete Response", [
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'successful' => $response->successful()
+        ]);
+
+        if ($response->successful()) {
+            Log::info("✅ Supabase Delete Successful", [
                 'table' => $table,
                 'filters' => $filters
             ]);
-
-            $response = Http::withHeaders([
-                'apikey' => $this->key,
-                'Authorization' => 'Bearer ' . $this->key,
-                'Content-Type' => 'application/json',
-            ])->timeout(30)->delete($url, $queryParams);
-
-            if ($response->successful()) {
-                Log::info("✅ Supabase Delete Successful", [
-                    'table' => $table
-                ]);
-                return true;
-            }
-
-            throw new \Exception("HTTP {$response->status()}: {$response->body()}");
-
-        } catch (\Exception $e) {
-            Log::error('💥 Supabase Delete Error', [
-                'table' => $table,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
+            return true;
         }
+
+        throw new \Exception("HTTP {$response->status()}: {$response->body()}");
+
+    } catch (\Exception $e) {
+        Log::error('💥 Supabase Delete Error', [
+            'table' => $table,
+            'filters' => $filters,
+            'error' => $e->getMessage()
+        ]);
+        throw $e;
     }
+}
 
     public function testConnection()
     {

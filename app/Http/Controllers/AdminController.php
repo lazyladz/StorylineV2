@@ -454,6 +454,58 @@ class AdminController extends Controller
 
     // Add after the comments() method in your AdminController:
 
+// ADD THIS TO YOUR SupabaseService.php - REPLACE THE EXISTING delete() METHOD
+
+public function delete($table, $filters)
+{
+    try {
+        $url = "{$this->url}/rest/v1/{$table}";
+        
+        // Build query string manually for DELETE requests
+        $queryParts = [];
+        foreach ($filters as $key => $value) {
+            $queryParts[] = urlencode($key) . '=eq.' . urlencode($value);
+        }
+        
+        if (!empty($queryParts)) {
+            $url .= '?' . implode('&', $queryParts);
+        }
+
+        Log::info("🗑️ Supabase Delete", [
+            'table' => $table,
+            'url' => $url,
+            'filters' => $filters
+        ]);
+
+        $response = Http::withHeaders([
+            'apikey' => $this->key,
+            'Authorization' => 'Bearer ' . $this->key,
+            'Content-Type' => 'application/json',
+        ])->timeout(30)->delete($url);
+
+        Log::info("📡 Delete Response", [
+            'status' => $response->status(),
+            'body' => $response->body()
+        ]);
+
+        if ($response->successful()) {
+            Log::info("✅ Supabase Delete Successful", [
+                'table' => $table
+            ]);
+            return true;
+        }
+
+        throw new \Exception("HTTP {$response->status()}: {$response->body()}");
+
+    } catch (\Exception $e) {
+        Log::error('💥 Supabase Delete Error', [
+            'table' => $table,
+            'error' => $e->getMessage()
+        ]);
+        throw $e;
+    }
+}
+
 public function updateStory(Request $request)
 {
     // Check admin access
@@ -466,6 +518,12 @@ public function updateStory(Request $request)
         $author = trim($request->input('author', ''));
         $description = trim($request->input('description', ''));
         
+        \Log::info('Update story request', [
+            'story_id' => $storyId,
+            'title' => $title,
+            'author' => $author
+        ]);
+        
         if (!$storyId || !$title || !$author) {
             return redirect()->route('admin.stories')->with('error', 'Title and author are required.');
         }
@@ -476,9 +534,11 @@ public function updateStory(Request $request)
             'description' => $description
         ];
         
-        $result = $this->supabase->update('stories', $updateData, ['id' => $storyId]);
+        // Correct order: update($table, $filters, $data)
+        $result = $this->supabase->update('stories', ['id' => $storyId], $updateData);
         
         if ($result) {
+            \Log::info('Story updated successfully', ['story_id' => $storyId]);
             return redirect()->route('admin.stories')->with('message', 'Story updated successfully.');
         } else {
             return redirect()->route('admin.stories')->with('error', 'Failed to update story.');
@@ -499,20 +559,31 @@ public function deleteStory(Request $request)
     try {
         $storyId = $request->input('story_id');
         
+        \Log::info('Delete story request', [
+            'story_id' => $storyId,
+            'request_all' => $request->all()
+        ]);
+        
         if (!$storyId) {
             return redirect()->route('admin.stories')->with('error', 'Story ID is required.');
         }
         
+        // Call delete with proper filter
         $result = $this->supabase->delete('stories', ['id' => $storyId]);
         
         if ($result) {
+            \Log::info('Story deleted successfully', ['story_id' => $storyId]);
             return redirect()->route('admin.stories')->with('message', 'Story deleted successfully.');
         } else {
             return redirect()->route('admin.stories')->with('error', 'Failed to delete story.');
         }
         
     } catch (\Exception $e) {
-        \Log::error("Error deleting story: " . $e->getMessage());
+        \Log::error("Error deleting story", [
+            'story_id' => $storyId ?? 'unknown',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
         return redirect()->route('admin.stories')->with('error', 'Database error: ' . $e->getMessage());
     }
 }
@@ -538,6 +609,7 @@ public function deleteUser(Request $request)
         $result = $this->supabase->delete('users', ['id' => $userId]);
         
         if ($result) {
+            \Log::info('User deleted successfully', ['user_id' => $userId]);
             return redirect()->route('admin.users')->with('message', 'User deleted successfully.');
         } else {
             return redirect()->route('admin.users')->with('error', 'Failed to delete user.');
@@ -569,9 +641,10 @@ public function updateRole(Request $request)
             return redirect()->route('admin.users')->with('error', 'You cannot change your own role.');
         }
         
-        $result = $this->supabase->update('users', ['role' => $newRole], ['id' => $userId]);
+        $result = $this->supabase->update('users', ['id' => $userId], ['role' => $newRole]);
         
         if ($result) {
+            \Log::info('User role updated', ['user_id' => $userId, 'new_role' => $newRole]);
             return redirect()->route('admin.users')->with('message', 'User role updated successfully.');
         } else {
             return redirect()->route('admin.users')->with('error', 'Failed to update user role.');

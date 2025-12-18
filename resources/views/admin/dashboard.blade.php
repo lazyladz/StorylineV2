@@ -6,63 +6,324 @@
   <title>Storyline - Admin Dashboard</title>
   <!-- Bootstrap 5 CDN -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body {
-      background-color: #eef1f6;
+      background-color: #f8f9fb;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
     }
+
+    /* Sidebar - Fixed and Non-Scrollable */
     .sidebar {
-      min-height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 250px;
       background-color: #0d1321;
       color: #fff;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
     }
+
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: #0d1321;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #1c2333;
+      border-radius: 3px;
+    }
+
     .sidebar a {
       color: #adb5bd;
       text-decoration: none;
       display: block;
       padding: .75rem 1rem;
       border-radius: .375rem;
+      transition: all 0.3s ease;
+      white-space: nowrap;
     }
-    .sidebar a:hover, .sidebar a.active {
+
+    .sidebar a:hover, 
+    .sidebar a.active {
       background-color: #1c2333;
       color: #fff;
     }
-    .top-card, .list-card, .chart-card {
-      background: #ffffff;
-      border-radius: .75rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+
+    .nav-link.active {
+      background-color: #667eea !important;
+      color: white !important;
+    }
+
+    .sidebar h4 {
+      margin-bottom: 0;
+    }
+
+    .sidebar .nav {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .sidebar .mt-auto {
+      margin-top: auto !important;
+    }
+
+    /* Main Content Area */
+    main {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      min-height: 100vh;
       padding: 1.5rem;
     }
-    .points {
-      font-size: 1.5rem;
+
+    /* Mobile Menu Toggle */
+    .mobile-menu-toggle {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1001;
+      background: #0d1321;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      
+      .sidebar.show {
+        transform: translateX(0);
+      }
+      
+      main {
+        margin-left: 0;
+        width: 100%;
+        padding-top: 4rem;
+      }
+      
+      .mobile-menu-toggle {
+        display: block !important;
+      }
+      
+      .sidebar-overlay.show {
+        display: block !important;
+      }
+    }
+
+    /* Tablet Responsive */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .sidebar {
+        width: 200px;
+      }
+      
+      main {
+        margin-left: 200px;
+        width: calc(100% - 200px);
+      }
+      
+      .sidebar a {
+        font-size: 0.9rem;
+        padding: 0.6rem 0.8rem;
+      }
+    }
+
+    .top-card {
+      background: #ffffff;
+      border-radius: .75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      padding: 1.25rem;
+    }
+
+    .stats-number {
+      font-size: 1.1rem;
       font-weight: bold;
-      color: #0d1321; 
     }
-    .progress {
-      background-color: #e6e9f0; 
-      border-radius: 10px;
+
+    /* Card Styles */
+    .story-card {
+      height: 100%;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: none;
+      border-radius: 12px;
       overflow: hidden;
-    }
-    .progress-bar {
-      border-radius: 10px;
-    }
-    .chart-container {
+      cursor: pointer;
       position: relative;
-      height: 300px;
+    }
+
+    .story-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .card-img-container {
+      height: 180px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card-img {
       width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
     }
-    .stat-card {
-      transition: transform 0.2s;
+
+    .story-card:hover .card-img {
+      transform: scale(1.05);
     }
-    .stat-card:hover {
-      transform: translateY(-2px);
+
+    .card-body {
+      padding: 1rem;
     }
-    .nav-link.active {
-      background-color: #667eea;
-      color: white !important;
+
+    .story-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      height: 2.5rem;
+    }
+
+    .story-author {
+      font-size: 0.8rem;
+      color: #6c757d;
+      margin-bottom: 0.5rem;
+    }
+
+    .story-genres {
+      margin-bottom: 0.75rem;
+    }
+
+    .genre-badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.4rem;
+      margin-right: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .story-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: #6c757d;
+      border-top: 1px solid #eee;
+      padding-top: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .story-reads {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
+    .story-chapters {
+      color: #28a745;
+      font-weight: 500;
+    }
+
+    .card-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      display: flex;
+      gap: 5px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .story-card:hover .card-actions {
+      opacity: 1;
+    }
+
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      background: white;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background: #f8f9fa;
+    }
+
+    .nsfw-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      font-size: 0.6rem;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #6c757d;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: #dee2e6;
+    }
+
+    .stories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      main {
+        padding: 1rem;
+      }
+      
+      .stories-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+      }
     }
   </style>
 </head>

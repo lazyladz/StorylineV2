@@ -126,130 +126,92 @@ class ProfileController extends Controller
 
     public function update(Request $request)
 {
-    \Log::info('Profile update started', ['user_id' => Auth::id(), 'data' => $request->all()]);
-
+    \Log::info('Profile update started', ['user_id' => Auth::id()]);
+    
     $validator = \Validator::make($request->all(), [
         'first_name' => 'required|string|max:255',
         'last_name' => 'required|string|max:255',
         'email' => 'required|email',
-        'bio' => 'nullable|string|max:500',
+        'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048' // Max 2MB
     ]);
-
+    
     if ($validator->fails()) {
-        \Log::error('Profile validation failed', ['errors' => $validator->errors()->toArray()]);
         return response()->json([
             'success' => false,
             'error' => $validator->errors()->first()
         ]);
     }
-
+    
     try {
         $user = Auth::user();
         
-        // Check if user has supabase_id
         if (empty($user->supabase_id)) {
-            \Log::error('User has no supabase_id', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'user_data' => $user->toArray()
-            ]);
-            
-            // Try to find user in Supabase by email
-            try {
-                $supabaseUsers = $this->supabase->select('users', '*', ['email' => $user->email]);
-                if (!empty($supabaseUsers)) {
-                    $supabaseUser = $supabaseUsers[0];
-                    $user->supabase_id = $supabaseUser['id'];
-                    $user->save();
-                    \Log::info('Fixed missing supabase_id', [
-                        'user_id' => $user->id,
-                        'new_supabase_id' => $supabaseUser['id']
-                    ]);
-                } else {
-                    throw new \Exception('User not found in Supabase');
-                }
-            } catch (\Exception $e) {
-                \Log::error('Could not fix supabase_id: ' . $e->getMessage());
-                throw new \Exception('User account not properly synchronized with Supabase');
+            $supabaseUsers = $this->supabase->select('users', '*', ['email' => $user->email]);
+            if (!empty($supabaseUsers)) {
+                $user->supabase_id = $supabaseUsers[0]['id'];
+                $user->save();
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'User not found in Supabase'
+                ]);
             }
         }
         
-        \Log::info('Updating profile for user', [
-            'user_id' => $user->id, 
-            'supabase_id' => $user->supabase_id,
-            'email' => $user->email
-        ]);
-        
-        // Update user in Supabase
+        // Build update data
         $updateData = [
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
-            'email' => $request->email,
-            'bio' => $request->bio ?? '',
-            'updated_at' => now()->toISOString()
+            'email' => $request->email
         ];
-
-        \Log::info('Attempting Supabase update', [
-            'table' => 'users',
-            'filters' => ['id' => $user->supabase_id],
-            'data' => $updateData
-        ]);
-
-        // Try the update
+        
+        // Handle image upload
+        $profileImageUrl = null;
+        if ($request->hasFile('profile_image')) {
+            $image = $request->file('profile_image');
+            
+            // Convert image to base64
+            $imageData = base64_encode(file_get_contents($image->getRealPath()));
+            $mimeType = $image->getMimeType();
+            $profileImageUrl = "data:$mimeType;base64,$imageData";
+            
+            // Add to update data
+            $updateData['profile_image'] = $profileImageUrl;
+            
+            \Log::info('Image uploaded', [
+                'size' => strlen($imageData),
+                'mime' => $mimeType
+            ]);
+        }
+        
+        \Log::info('Updating Supabase user', ['data' => array_keys($updateData)]);
+        
         $result = $this->supabase->update('users', ['id' => $user->supabase_id], $updateData);
         
-        \Log::info('Supabase update result', [
-            'result' => $result,
-            'result_type' => gettype($result),
-            'is_array' => is_array($result),
-            'is_bool' => is_bool($result)
-        ]);
-
-        // Check result - it could be an array or boolean
         if ($result === false || $result === null || (is_array($result) && empty($result))) {
-            \Log::warning('Supabase update may have failed, checking if update actually happened');
-            
-            // Verify the update by fetching the user
-            $updatedUser = $this->supabase->select('users', '*', ['id' => $user->supabase_id]);
-            
-            if (!empty($updatedUser)) {
-                $currentData = $updatedUser[0];
-                \Log::info('Current user data after update attempt', $currentData);
-                
-                // Check if data matches what we tried to update
-                if ($currentData['first_name'] === $updateData['first_name'] && 
-                    $currentData['last_name'] === $updateData['last_name']) {
-                    \Log::info('Update appears to have succeeded based on data verification');
-                    $result = true; // Mark as success
-                }
-            }
+            throw new \Exception('Supabase update returned empty result');
         }
-
-        if (!$result) {
-            throw new \Exception('Supabase update failed. Check logs for details.');
-        }
-
-        // Update local user
+        
+        // Update local Laravel user
         $user->update([
             'name' => $request->first_name . ' ' . $request->last_name,
             'email' => $request->email
         ]);
-
+        
         \Log::info('Profile updated successfully');
-
+        
         return response()->json([
             'success' => true,
-            'message' => 'Profile updated successfully'
+            'message' => 'Profile updated successfully',
+            'profile_image_url' => $profileImageUrl
         ]);
-
+        
     } catch (\Exception $e) {
-        \Log::error("Error updating profile: " . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
+        \Log::error("Error updating profile: " . $e->getMessage());
         
         return response()->json([
             'success' => false,
-            'error' => 'Failed to update profile. Please try again.'
+            'error' => 'Failed to update profile: ' . $e->getMessage()
         ]);
     }
 }

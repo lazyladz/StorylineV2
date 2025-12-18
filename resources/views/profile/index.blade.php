@@ -329,48 +329,57 @@
 
 <body>
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg">
-    <div class="container">
-      <a class="navbar-brand" href="{{ route('home') }}">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-book me-2" viewBox="0 0 16 16">
-          <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
-        </svg>
-        Storyline
-      </a>
+  <!-- Replace the navbar section in your profile.blade.php (resources/views/profile/index.blade.php) with this -->
+<nav class="navbar navbar-expand-lg">
+  <div class="container">
+    <a class="navbar-brand" href="{{ route('home') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-book me-2" viewBox="0 0 16 16">
+        <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+      </svg>
+      Storyline
+    </a>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
-      <div class="collapse navbar-collapse" id="navbarContent">
-        <ul class="navbar-nav ms-auto align-items-center">
-          <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}"><i class="fas fa-th-large me-1"></i>Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ route('browse') }}"><i class="fas fa-compass me-1"></i>Browse</a></li>
-          <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-pen me-1"></i>Write</a></li>
-          
-          <li class="nav-item dropdown ms-2">
-            <a class="nav-link p-0" href="#" data-bs-toggle="dropdown">
-              <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; font-weight: bold;">
-                <span id="userInitial">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
-              </div>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="fas fa-user me-2"></i>My Profile</a></li>
-              <li><a class="dropdown-item" href="#"><i class="fas fa-book me-2"></i>My Stories</a></li>
-              <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <form action="{{ route('logout') }}" method="POST" class="d-inline">
-                  @csrf
-                  <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
-                </form>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </div>
+    <div class="collapse navbar-collapse" id="navbarContent">
+      <ul class="navbar-nav ms-auto align-items-center">
+        <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}"><i class="fas fa-th-large me-1"></i>Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ route('browse') }}"><i class="fas fa-compass me-1"></i>Browse</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ route('write') }}"><i class="fas fa-pen me-1"></i>Write</a></li>
+        
+        <!-- User dropdown with profile picture -->
+        <li class="nav-item dropdown ms-2">
+          <a class="nav-link p-0" href="#" data-bs-toggle="dropdown">
+            <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center" 
+                 style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);">
+              @if(isset($profile_image) && !str_contains($profile_image ?? '', 'unsplash.com'))
+                <img src="{{ $profile_image }}" alt="Profile" id="navProfilePic" style="width: 100%; height: 100%; object-fit: cover;">
+              @else
+                <span id="userInitial" style="color: white; font-weight: bold;">
+                  {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                </span>
+              @endif
+            </div>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{{ route('profile') }}"><i class="fas fa-user me-2"></i>My Profile</a></li>
+            <li><a class="dropdown-item" href="{{ route('mystories') }}"><i class="fas fa-book me-2"></i>My Stories</a></li>
+            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form action="{{ route('logout') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+              </form>
+            </li>
+          </ul>
+        </li>
+      </ul>
     </div>
-  </nav>
+  </div>
+</nav>
 
   <!-- Profile Header -->
   <div class="profile-header">
@@ -564,30 +573,55 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-    function viewStory(storyId) {
-      window.location.href = `/stories/${storyId}`;
-    }
+<script>
+// Global variable to store the selected image file
+let selectedImageFile = null;
 
-    function editStory(storyId) {
-      window.location.href = `/write/${storyId}`;
-    }
-
-    function deleteStory(storyId) {
-      if (confirm('Are you sure you want to delete this story?')) {
-        // Add delete functionality here
-        console.log('Delete story:', storyId);
+// Wait for page to load
+document.addEventListener('DOMContentLoaded', function() {
+  
+  // Image upload preview
+  document.getElementById('profileImageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        showNotification('Image must be less than 2MB', 'error');
+        return;
       }
+      
+      // Check file type
+      if (!file.type.match('image.*')) {
+        showNotification('Please select an image file', 'error');
+        return;
+      }
+      
+      // Store the file for later upload
+      selectedImageFile = file;
+      
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('modalAvatar').src = e.target.result;
+        document.getElementById('profileAvatar').src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     }
+  });
+  
+});
 
-    function saveProfile() {
-  const formData = {
-    first_name: document.getElementById('editFirstName').value,
-    last_name: document.getElementById('editLastName').value,
-    email: document.getElementById('editEmail').value,
-    bio: document.getElementById('editBio').value,
-    _token: '{{ csrf_token() }}'
-  };
+// Save profile function
+function saveProfile() {
+  const firstName = document.getElementById('editFirstName').value;
+  const lastName = document.getElementById('editLastName').value;
+  const email = document.getElementById('editEmail').value;
+
+  // Validate inputs
+  if (!firstName || !lastName || !email) {
+    showNotification('Please fill in all fields', 'error');
+    return;
+  }
 
   // Show loading state
   const saveButton = document.querySelector('#editProfileModal .btn-main');
@@ -595,34 +629,62 @@
   saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
   saveButton.disabled = true;
 
+  // Use FormData to handle file upload
+  const formData = new FormData();
+  formData.append('first_name', firstName);
+  formData.append('last_name', lastName);
+  formData.append('email', email);
+  formData.append('_token', '{{ csrf_token() }}');
+  
+  // Add image if one was selected
+  if (selectedImageFile) {
+    formData.append('profile_image', selectedImageFile);
+    console.log('Uploading image:', selectedImageFile.name);
+  }
+
+  // Send request
   fetch('{{ route("profile.update") }}', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'X-CSRF-TOKEN': '{{ csrf_token() }}',
       'Accept': 'application/json'
+      // DON'T set Content-Type - let browser set it with boundary for FormData
     },
-    body: JSON.stringify(formData)
+    body: formData
   })
   .then(response => {
+    console.log('Response status:', response.status);
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
     return response.json();
   })
   .then(result => {
+    console.log('Result:', result);
+    
     if (result.success) {
       // Update profile display
-      document.getElementById('profileName').textContent = `${formData.first_name} ${formData.last_name}`;
-      document.getElementById('profileBio').textContent = formData.bio;
-      document.getElementById('userInitial').textContent = formData.first_name.charAt(0).toUpperCase();
+      document.getElementById('profileName').textContent = `${firstName} ${lastName}`;
+      document.getElementById('userInitial').textContent = firstName.charAt(0).toUpperCase();
+      
+      // Update navbar avatar if image was uploaded
+      if (result.profile_image_url) {
+        const navbarAvatar = document.querySelector('.navbar .rounded-circle');
+        if (navbarAvatar) {
+          navbarAvatar.innerHTML = `<img src="${result.profile_image_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+        }
+      }
       
       // Close modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
       modal.hide();
       
-      // Show success message
-      showNotification('Profile updated successfully!', 'success');
+      // Show success message and reload
+      showNotification('Profile updated successfully! Refreshing...', 'success');
+      setTimeout(() => window.location.reload(), 1500);
+      
+      // Reset image file
+      selectedImageFile = null;
     } else {
       showNotification(result.error || 'Failed to update profile', 'error');
     }
@@ -638,9 +700,8 @@
   });
 }
 
-// Add notification function
+// Notification function
 function showNotification(message, type = 'success') {
-  // Create notification element
   const notification = document.createElement('div');
   notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
   notification.style.cssText = `
@@ -656,10 +717,8 @@ function showNotification(message, type = 'success') {
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   `;
   
-  // Add to body
   document.body.appendChild(notification);
   
-  // Auto remove after 5 seconds
   setTimeout(() => {
     if (notification.parentNode) {
       notification.remove();
@@ -667,26 +726,21 @@ function showNotification(message, type = 'success') {
   }, 5000);
 }
 
-    function showSuccess(message) {
-      alert('Success: ' + message); // Replace with toast notification
-    }
+// Story action functions
+function viewStory(storyId) {
+  window.location.href = `/stories/${storyId}`;
+}
 
-    function showError(message) {
-      alert('Error: ' + message); // Replace with toast notification
-    }
+function editStory(storyId) {
+  window.location.href = `/write/${storyId}`;
+}
 
-    // Image upload preview
-    document.getElementById('profileImageInput').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          document.getElementById('modalAvatar').src = e.target.result;
-          document.getElementById('profileAvatar').src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  </script>
+function deleteStory(storyId) {
+  if (confirm('Are you sure you want to delete this story?')) {
+    console.log('Delete story:', storyId);
+    // Add delete functionality here
+  }
+}
+</script>
 </body>
 </html>

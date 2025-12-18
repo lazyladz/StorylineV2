@@ -21,9 +21,24 @@ class BrowseController extends Controller
         try {
             $user = Auth::user();
             $userSettings = [];
+            $profileImage = null; // Initialize profile image
             
-            // Get user settings if logged in
+            // Get user settings and profile image if logged in
             if ($user) {
+                // Get profile image
+                $profileImage = 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=667eea&color=fff';
+                
+                if (!empty($user->supabase_id)) {
+                    $supabaseUsers = $this->supabase->select('users', '*', ['id' => $user->supabase_id]);
+                    if (!empty($supabaseUsers)) {
+                        $supabaseUser = $supabaseUsers[0];
+                        if (!empty($supabaseUser['profile_image'])) {
+                            $profileImage = $supabaseUser['profile_image'];
+                        }
+                    }
+                }
+                
+                // Get user settings
                 $settings = new UserSettings($this->supabase, $user->email);
                 $userSettings = $settings->all();
             } else {
@@ -57,7 +72,8 @@ class BrowseController extends Controller
             return view('browse', [
                 'allStories' => $filteredStories, 
                 'popularGenres' => $popularGenres,
-                'user_settings' => $userSettings
+                'user_settings' => $userSettings,
+                'profileImage' => $profileImage // Pass profile image to view
             ]);
 
         } catch (\Exception $e) {
@@ -72,7 +88,8 @@ class BrowseController extends Controller
                     'Thriller', 'Sci-Fi', 'Comedy', 'Action', 
                     'Drama', 'Adventure', 'Historical'
                 ],
-                'user_settings' => ['show_nsfw' => false]
+                'user_settings' => ['show_nsfw' => false],
+                'profileImage' => null // Pass null in case of error
             ]);
         }
     }

@@ -52,6 +52,9 @@ Route::get('/register', [AuthController::class, 'showRegister'])->name('register
 Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+Route::get('/get-story/{id}', [StoryController::class, 'getStory'])->name('get-story');
+Route::get('/get-comments/{story_id}', [CommentController::class, 'getComments'])->name('get-comments');
+
 // Authenticated routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -77,11 +80,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/update-story', [StoryController::class, 'updateStory'])->name('update-story');
     Route::get('/get-my-stories', [StoryController::class, 'getMyStories'])->name('get-my-stories');
     Route::get('/get-all-stories', [StoryController::class, 'getAllStories'])->name('get-all-stories');
-    Route::get('/get-story/{id}', [StoryController::class, 'getStory'])->name('get-story');
     Route::post('/delete-story', [StoryController::class, 'deleteStory'])->name('delete-story');
     
     // Comment routes
-    Route::get('/get-comments/{story_id}', [CommentController::class, 'getComments'])->name('get-comments');
     Route::post('/add-comment', [CommentController::class, 'addComment'])->name('add-comment');
 });
 
@@ -117,19 +118,11 @@ Route::get('/debug-profile-update', function() {
         $user = Auth::user();
         $supabase = new \App\Services\SupabaseService();
         
-        // Test update with minimal data
+        // Test update - NO updated_at
         $testData = [
-            'updated_at' => now()->toISOString(),
             'first_name' => 'Test_' . rand(100, 999)
         ];
         
-        \Log::info('Debug profile update test', [
-            'user_id' => $user->id,
-            'supabase_id' => $user->supabase_id,
-            'test_data' => $testData
-        ]);
-        
-        // Test the update
         $result = $supabase->update('users', ['id' => $user->supabase_id], $testData);
         
         return response()->json([
@@ -137,16 +130,13 @@ Route::get('/debug-profile-update', function() {
             'result' => $result,
             'user' => [
                 'id' => $user->id,
-                'supabase_id' => $user->supabase_id,
-                'has_supabase_id' => !empty($user->supabase_id)
+                'supabase_id' => $user->supabase_id
             ]
         ]);
     } catch (\Exception $e) {
-        \Log::error('Debug profile update error: ' . $e->getMessage());
         return response()->json([
             'success' => false,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
+            'error' => $e->getMessage()
         ]);
     }
 })->middleware('auth');
